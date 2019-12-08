@@ -1,11 +1,10 @@
 import tensorflow as tf
-from typing import TypeVar, List, Callable
+from typing import List, Callable
 
 
-NestedList = TypeVar('NestedList')
-PhasePoint = NestedList[tf.Tensor]
+PhasePoint = List[tf.Tensor]
 Time = float
-PhaseVectorField = Callable[[Time, PhasePoint], PhasePoint]
+PhaseVectorField = Callable[[PhasePoint, Time], PhasePoint]
 
 
 def fix_grid_odeint(step_fn):
@@ -42,40 +41,36 @@ def fix_grid_odeint(step_fn):
         for i in range(n_grids - 1):
             time = interval[i]
             time_diff = interval[i + 1] - interval[i]
-            phase_point = step_fn(func, phase_point, time, time_diff)
+            phase_point = step_fn(func, time, time_diff, phase_point)
         return phase_point
 
     return odeint
 
 
-def apply_to_nested_list(step_fn_comp):
-    """TODO"""
+def apply_to_maybe_list(step_fn_comp):
 
     def step_fn(f, t, dt, x):
         if not isinstance(x, list):
             return step_fn_comp(f, t, dt, x)
         else:
-            return [step_fn(f, t, dt, xi) for xi in x]
+            return [step_fn_comp(f, t, dt, xi) for xi in x]
 
     return step_fn
 
 
-@apply_to_nested_list
-@tf.function
+@apply_to_maybe_list
 def euler_step_fn(f, t, dt, x):
     return x + dt * f(x, t)
 
 
-@apply_to_nested_list
-@tf.function
+@apply_to_maybe_list
 def rk2_step_fn(f, t, dt, x):
     k1 = f(x, t)
     k2 = f(x + k1 * dt, t + dt)
     return x + (k1 + k2) / 2 * dt
 
 
-@apply_to_nested_list
-@tf.function
+@apply_to_maybe_list
 def rk4_step_fn(f, t, dt, x):
     k1 = f(x, t)
     k2 = f(x + k1 * dt / 2, t + dt / 2)
