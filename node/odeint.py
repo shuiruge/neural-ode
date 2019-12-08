@@ -1,10 +1,11 @@
 import tensorflow as tf
-from typing import Callable
+from typing import TypeVar, List, Callable
 
 
-PhasePoint = tf.Tensor
+NestedList = TypeVar('NestedList')
+PhasePoint = NestedList[tf.Tensor]
 Time = float
-PhaseVectorField = Callable[[PhasePoint, Time], PhasePoint]
+PhaseVectorField = Callable[[Time, PhasePoint], PhasePoint]
 
 
 def fix_grid_odeint(step_fn):
@@ -16,26 +17,25 @@ def fix_grid_odeint(step_fn):
     The interface follows that in scipy.integrate.
 
     Args:
-        step_fn: Callable[[PhaseVectorField, PhasePoint, Time, Time],
+        step_fn: Callable[[PhaseVectorField, Time, Time, PhasePoint],
                           PhasePoint]
             Step-function for fixed grid integration method, e.g. Euler's
             method. The last two arguments represents time and time-
             difference respectively.
     
-    Returns: Callable[[PhaseVectorField, PhasePoint, List[Time]],
+    Returns: Callable[[PhaseVectorField, List[Time], PhasePoint],
                       PhasePoint]
     """
 
     @tf.function
-    def odeint(func, initial_value, interval):
+    def odeint(func, interval, initial_value):
         """
         Args:
             func: PhaseVectorField
-            initial_value: tensor-like
             interval: List[Time]
+            initial_value: PhasePoint
 
-        Returns: tf.Tensor
-            The same shape and dtype as the `initial_value`.
+        Returns: PhasePoint
         """
         n_grids = len(interval)
         phase_point = initial_value
@@ -48,52 +48,37 @@ def fix_grid_odeint(step_fn):
     return odeint
 
 
+def apply_to_nested_list(step_fn_comp):
+    """TODO"""
+
+    def step_fn(f, t, dt, x):
+        if not isinstance(x, list):
+            return step_fn_comp(f, t, dt, x)
+        else:
+            return [step_fn(f, t, dt, xi) for xi in x]
+
+    return step_fn
+
+
+@apply_to_nested_list
 @tf.function
-def euler_step_fn(f, x, t, dt):
+def euler_step_fn(f, t, dt, x):
     return x + dt * f(x, t)
 
 
+@apply_to_nested_list
 @tf.function
-def rk2_step_fn(f, x, t, dt):
+def rk2_step_fn(f, t, dt, x):
     k1 = f(x, t)
     k2 = f(x + k1 * dt, t + dt)
     return x + (k1 + k2) / 2 * dt
 
 
+@apply_to_nested_list
 @tf.function
-def rk4_step_fn(f, x, t, dt):
+def rk4_step_fn(f, t, dt, x):
     k1 = f(x, t)
     k2 = f(x + k1 * dt / 2, t + dt / 2)
     k3 = f(x + k2 * dt / 2, t + dt / 2)
     k4 = f(x + k3 * dt, t + dt)
     return x + (k1 + 2 * k2 + 2 * k3 + k4) / 6 * dt
-
-
-if __name__ == '__main__':
-
-    odeint = fix_grid_odeint(rk2_step_fn)
-
-    # Example 1
-
-    def f(x, t):
-        u, v = tf.unstack(x)
-        du_dt = v
-        dv_dt = 5 * v - 6 * u
-        return tf.stack([du_dt, dv_dt])
-
-
-    x0 = [1., 1.]
-    ts = tf.range(0, 1, 1e-3)
-    x1 = odeint(f, x0, ts)
-    print(x1)
-
-    # Example 2
-
-    def f(x, t):
-        dx_dt = tf.sin(t ** 2) * x
-        return dx_dt
-
-    x0 = [1.]
-    ts = tf.range(0, 8, 1e-2)
-    x1 = odeint(f, x0, ts)
-    print(x1)
