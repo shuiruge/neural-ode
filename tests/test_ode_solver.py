@@ -1,10 +1,11 @@
-import numpy as np
 import tensorflow as tf
-from node.odeint import fix_grid_odeint, rk2_step_fn
+from node.ode_solver import FixGridODESolver, rk4_step_fn
 
-odeint = fix_grid_odeint(rk2_step_fn)
+ode_solver = FixGridODESolver(rk4_step_fn, 100)
+
 
 # Example 1
+
 
 def f(x, t):
     u, v = tf.unstack(x)
@@ -14,17 +15,18 @@ def f(x, t):
 
 
 x0 = tf.constant([1., 1.])
-ts = tf.range(0, 1, 1e-2)
-x1 = odeint(f, ts, x0)
+x1 = ode_solver(f, 0, 1, x0)
 print(x1)
 
+
 # Example 2
+
 
 def f(x, t):
     dx_dt = tf.sin(t ** 2) * x
     return dx_dt
 
+
 x0 = tf.constant([1.])
-ts = tf.range(0, 8, 1e-2)
-x1 = odeint(f, ts, x0)
+x1 = ode_solver(f, 0, 8, x0)
 print(x1)

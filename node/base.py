@@ -1,19 +1,54 @@
 import tensorflow as tf
+from typing import Union, List, Callable
+
+Time = float
+PhasePoint = Union[tf.Tensor, List[tf.Tensor]]
+PhaseVectorField = Callable[[PhasePoint, Time], PhasePoint]
 
 
-def reverse_mode_derivative(odeint, network, var_list, interval,
-                            final_state, loss_gradient, batch_axes):
+class ODESolver:
+    r"""
+    Definition
+    ----------
+    $\text{ode_solver}(f, t_0, t_1, z(t_0)) := z(t_0) + \int_{t_0}^{t_1} f(z(t), t) dt$  # noqa:E501
+    which is exectly the $z(t_1)$.
+    """
+
+    def __call__(self,
+                 phase_vector_field,
+                 start_time,
+                 end_time,
+                 initial_phase_point):
+        """
+        Args:
+            phase_vector_field: PhaseVectorField
+            start_time: Time
+            end_time: Time
+            initial_phase_point: PhasePoint
+
+        Returns: PhasePoint
+        """
+        return NotImplemented
+
+
+def reverse_mode_derivative(ode_solver,
+                            network,
+                            var_list,
+                            start_time,
+                            end_time,
+                            final_state,
+                            loss_gradient,
+                            batch_axes):
     r"""Implements the algorithm 1 in the paper original paper (1806.07366).
 
     Args:
-        odeint: Callable[[PhaseVectorField, List[Time], PhasePoint],
-                         PhasePoint]
+        ode_solver: ODESolver
         network: Callable[[tf.Tensor], tf.Tensor]
         var_list: List[tf.Variable]
             The $\theta$ in the paper. In practice, it's a list of variables.
             Thus $\theta = (\theta_1, \ldots)$,
-        interval: List[float]
-            Works for fix grid ODE solvers.
+        start_time: Time
+        end_time: Time
         final_state: tf.Tensor
             The $z^{\alpha}(t_1)$ in the paper. The final outputs of the
             Neural ODE.
@@ -52,6 +87,7 @@ def reverse_mode_derivative(odeint, network, var_list, interval,
 
     ode_initial_value = ([final_state, loss_gradient] +
                          [tf.zeros_like(var) for var in var_list])
-    ode_final_value = odeint(aug_dynamics, interval, ode_initial_value)
+    ode_final_value = ode_solver(
+        aug_dynamics, start_time, end_time, ode_initial_value)
     init_state, init_loss_gradient, *grad_loss_by_vars = ode_final_value
     return grad_loss_by_vars
