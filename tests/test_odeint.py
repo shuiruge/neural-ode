@@ -14,7 +14,7 @@ def f(x, t):
 
 
 x0 = tf.constant([1., 1.])
-ts = tf.range(0, 1, 1e-3)
+ts = tf.range(0, 1, 1e-2)
 x1 = odeint(f, ts, x0)
 print(x1)
 

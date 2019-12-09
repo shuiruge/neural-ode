@@ -1,8 +1,8 @@
 import tensorflow as tf
-from typing import List, Callable
+from typing import Union, List, Callable
 
 
-PhasePoint = List[tf.Tensor]
+PhasePoint = Union[tf.Tensor, List[tf.Tensor]]
 Time = float
 PhaseVectorField = Callable[[PhasePoint, Time], PhasePoint]
 
@@ -26,7 +26,6 @@ def fix_grid_odeint(step_fn):
                       PhasePoint]
     """
 
-    @tf.function
     def odeint(func, interval, initial_value):
         """
         Args:
@@ -36,18 +35,31 @@ def fix_grid_odeint(step_fn):
 
         Returns: PhasePoint
         """
-        n_grids = len(interval)
-        phase_point = initial_value
-        for i in range(n_grids - 1):
+
+        def cond(i, phase_point):
+            return i < len(interval) - 1
+
+        def body(i, phase_point):
             time = interval[i]
             time_diff = interval[i + 1] - interval[i]
-            phase_point = step_fn(func, time, time_diff, phase_point)
-        return phase_point
+            next_phase_point = step_fn(func, time, time_diff, phase_point)
+            return i + 1, next_phase_point
+
+        return tf.while_loop(cond, body, [0, initial_value])
 
     return odeint
 
 
-def apply_to_maybe_list(step_fn_comp):
+def _apply_to_maybe_list(step_fn_comp):
+    """Auxillary decorator XXX
+
+    Args:
+        step_fn_comp: Callable[[PhaseVectorField, Time, Time, tf.Tensor],
+                               tf.Tensor]
+
+    Returns: Callable[[PhaseVectorField, Time, Time, PhasePoint],
+                      PhasePoint]
+    """
 
     def step_fn(f, t, dt, x):
         if not isinstance(x, list):
@@ -58,19 +70,19 @@ def apply_to_maybe_list(step_fn_comp):
     return step_fn
 
 
-@apply_to_maybe_list
+@_apply_to_maybe_list
 def euler_step_fn(f, t, dt, x):
     return x + dt * f(x, t)
 
 
-@apply_to_maybe_list
+@_apply_to_maybe_list
 def rk2_step_fn(f, t, dt, x):
     k1 = f(x, t)
     k2 = f(x + k1 * dt, t + dt)
     return x + (k1 + k2) / 2 * dt
 
 
-@apply_to_maybe_list
+@_apply_to_maybe_list
 def rk4_step_fn(f, t, dt, x):
     k1 = f(x, t)
     k2 = f(x + k1 * dt / 2, t + dt / 2)
