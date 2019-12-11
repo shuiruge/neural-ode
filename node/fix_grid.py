@@ -49,45 +49,45 @@ class FixGridODESolver(ODESolver):
         return fianl_phase_point
 
 
-def _apply_to_maybe_list(step_fn_comp):
-    """Auxillary decorator XXX
-
-    Args:
-        step_fn_comp: Callable[[PhaseVectorField, Time, Time, tf.Tensor],
-                               tf.Tensor]
-
-    Returns: Callable[[PhaseVectorField, Time, Time, PhasePoint],
-                      PhasePoint]
-    """
-
-    def step_fn(f, t, dt, x):
-        if not isinstance(x, list):
-            return step_fn_comp(f, t, dt, x)
-        else:
-            return [step_fn_comp(f, t, dt, xi) for xi in x]
-
-    return step_fn
+def _apply_to_maybe_list(fn, *args):
+    """TODO"""
+    if not any([isinstance(arg, list) for arg in args]):
+        return fn(*args)
+    elif all([isinstance(arg, list) for arg in args]):
+        return list(map(fn, zip(*args)))
+    else:
+        raise ValueError()  # TODO: add error message.
 
 
-@_apply_to_maybe_list
 def euler_step_fn(f, t, dt, x):
-    return x + dt * f(x, t)
+    k1 = f(x, t)
+
+    def comp_fn(x, k1):
+        return x + k1 * dt
+
+    return _apply_to_maybe_list(comp_fn, x, k1)
 
 
-@_apply_to_maybe_list
 def rk2_step_fn(f, t, dt, x):
     k1 = f(x, t)
     k2 = f(x + k1 * dt, t + dt)
-    return x + (k1 + k2) / 2 * dt
+
+    def comp_fn(x, k1, k2):
+        return x + (k1 + k2) / 2 * dt
+
+    return _apply_to_maybe_list(comp_fn, x, k1, k2)
 
 
-@_apply_to_maybe_list
 def rk4_step_fn(f, t, dt, x):
     k1 = f(x, t)
     k2 = f(x + k1 * dt / 2, t + dt / 2)
     k3 = f(x + k2 * dt / 2, t + dt / 2)
     k4 = f(x + k3 * dt, t + dt)
-    return x + (k1 + 2 * k2 + 2 * k3 + k4) / 6 * dt
+
+    def comp_fn(x, k1, k2, k3, k4):
+        return x + (k1 + 2 * k2 + 2 * k3 + k4) / 6 * dt
+
+    return _apply_to_maybe_list(comp_fn, x, k1, k2, k3, k4)
 
 
 class FixGridODESolverWithTrajectory:
