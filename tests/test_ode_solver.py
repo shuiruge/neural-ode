@@ -1,5 +1,5 @@
 import tensorflow as tf
-from node.ode_solver import FixGridODESolver, rk4_step_fn
+from node.fix_grid import FixGridODESolver, rk4_step_fn
 
 ode_solver = FixGridODESolver(rk4_step_fn, 100)
 
