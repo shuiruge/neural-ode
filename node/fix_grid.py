@@ -23,71 +23,67 @@ class FixGridODESolver(ODESolver):
         self.step_fn = step_fn
         self.num_grids = num_grids
 
-    def __call__(self,
-                 phase_vector_field,
-                 start_time,
-                 end_time,
-                 initial_phase_point):
-        interval = tf.linspace(float(start_time),
-                               float(end_time),
-                               self.num_grids)
+    def __call__(self, phase_vector_field):
 
-        def cond(i, phase_point):
-            return i < self.num_grids - 1
+        @tf.function
+        def forward(start_time, end_time, initial_phase_point):
+            x, t = initial_phase_point, start_time
+            interval = tf.linspace(start_time, end_time, self.num_grids)
+            for next_t in interval[1:]:
+                dt = next_t - t
+                x = self.step_fn(phase_vector_field, t, dt, x)
+                t = next_t
+            return x
 
-        def body(i, phase_point):
-            time = interval[i]
-            time_diff = interval[i + 1] - interval[i]
-            next_phase_point = self.step_fn(phase_vector_field,
-                                            time,
-                                            time_diff,
-                                            phase_point)
-            return i + 1, next_phase_point
-
-        loop_vars = [0, initial_phase_point]
-        _, fianl_phase_point = tf.while_loop(cond, body, loop_vars)
-        return fianl_phase_point
+        return forward
 
 
-def _apply_to_maybe_list(fn, *args):
-    """TODO"""
-    if not any([isinstance(arg, list) for arg in args]):
-        return fn(*args)
-    elif all([isinstance(arg, list) for arg in args]):
-        return list(map(fn, zip(*args)))
-    else:
-        raise ValueError()  # TODO: add error message.
-
-
+@tf.function
 def euler_step_fn(f, t, dt, x):
+    list_input = isinstance(x, list)
+
     k1 = f(x, t)
 
-    def comp_fn(x, k1):
-        return x + k1 * dt
-
-    return _apply_to_maybe_list(comp_fn, x, k1)
-
-
-def rk2_step_fn(f, t, dt, x):
-    k1 = f(x, t)
-    k2 = f(x + k1 * dt, t + dt)
-
-    def comp_fn(x, k1, k2):
-        return x + (k1 + k2) / 2 * dt
-
-    return _apply_to_maybe_list(comp_fn, x, k1, k2)
+    if list_input:
+        new_x = [xi + k1i * dt for xi, k1i in zip(x, k1)]
+    else:
+        new_x = x + k1 * dt
+    return new_x
 
 
+@tf.function
 def rk4_step_fn(f, t, dt, x):
+    list_input = isinstance(x, list)
+
     k1 = f(x, t)
-    k2 = f(x + k1 * dt / 2, t + dt / 2)
-    k3 = f(x + k2 * dt / 2, t + dt / 2)
-    k4 = f(x + k3 * dt, t + dt)
 
-    def comp_fn(x, k1, k2, k3, k4):
-        return x + (k1 + 2 * k2 + 2 * k3 + k4) / 6 * dt
+    if list_input:
+        new_x = [xi + k1i * dt / 2 for xi, k1i in zip(x, k1)]
+    else:
+        new_x = x + k1 * dt / 2
+    new_t = t + dt / 2
+    k2 = f(new_x, new_t)
 
-    return _apply_to_maybe_list(comp_fn, x, k1, k2, k3, k4)
+    if list_input:
+        new_x = [xi + k2i * dt / 2 for xi, k2i in zip(x, k2)]
+    else:
+        new_x = x + k2 * dt / 2
+    new_t = t + dt / 2
+    k3 = f(new_x, new_t)
+
+    if list_input:
+        new_x = [xi + k3i * dt for xi, k3i in zip(x, k3)]
+    else:
+        new_x = x + k3 * dt
+    new_t = t + dt
+    k4 = f(new_x, new_t)
+
+    if list_input:
+        new_x = [xi + (k1i + 2 * k2i + 2 * k3i + k4i) / 6 * dt
+                 for xi, k1i, k2i, k3i, k4i in zip(x, k1, k2, k3, k4)]
+    else:
+        new_x = x + (k1 + 2 * k2 + 2 * k3 + k4) / 6 * dt
+    return new_x
 
 
 class FixGridODESolverWithTrajectory:
@@ -97,31 +93,19 @@ class FixGridODESolverWithTrajectory:
         self.step_fn = step_fn
         self.num_grids = num_grids
 
-    def __call__(self,
-                 phase_vector_field,
-                 start_time,
-                 end_time,
-                 initial_phase_point):
-        interval = tf.linspace(float(start_time),
-                               float(end_time),
-                               self.num_grids)
+    def __call__(self, phase_vector_field):
 
-        def cond(i, phase_point, trajectory):
-            return i < self.num_grids - 1
+        @tf.function
+        def forward(start_time, end_time, initial_phase_point):
+            x, t, i = initial_phase_point, start_time, 0
+            xs = tf.TensorArray(tf.float32, self.num_grids).write(i, x)
 
-        def body(i, phase_point, trajectory):
-            time = interval[i]
-            time_diff = interval[i + 1] - interval[i]
-            next_phase_point = self.step_fn(phase_vector_field,
-                                            time,
-                                            time_diff,
-                                            phase_point)
-            trajectory.write(i + 1, next_phase_point)
-            return i + 1, next_phase_point, trajectory
+            interval = tf.linspace(start_time, end_time, self.num_grids)
+            for next_t in interval[1:]:
+                dt = next_t - t
+                x = self.step_fn(phase_vector_field, t, dt, x)
+                t, i = next_t, i + 1
+                xs = xs.write(i, x)
+            return x, xs.stack()
 
-        trajectory = (tf.TensorArray(dtype=tf.float32, size=self.num_grids)
-                        .write(0, initial_phase_point))
-        loop_vars = [0, initial_phase_point, trajectory]
-        _, final_phase_point, trajectory = tf.while_loop(cond, body, loop_vars)
-
-        return final_phase_point, trajectory.stack()
+        return forward

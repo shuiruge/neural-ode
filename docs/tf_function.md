@@ -1,0 +1,1 @@
+* [This](https://stackoverflow.com/a/57704523) is a concise explanation of `tf.function`, on how it works.
