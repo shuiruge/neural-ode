@@ -111,9 +111,12 @@ for step in range(n_iters):
     loss_history.append(loss.numpy())
     print(f'{step} - {loss.numpy()}')
 
-    if step % 1000 == 0:
+    if step % 300 == 0:
         yN, states_history_model = \
             ode_solver_with_traj(network)(t0, t1, true_y0)
         # plot trajectories
         plot_spiral([true_y, np.concatenate(states_history_model)])
         plt.show()
+
+plot_spiral([true_y, np.concatenate(states_history_model)])
+plt.show()
