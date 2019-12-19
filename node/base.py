@@ -37,7 +37,6 @@ class ODESolver:
         return NotImplemented
 
 
-# TODO: re-write
 def reverse_mode_derivative(ode_solver, network, variables):
     r"""Implements the algorithm 1 in the paper original paper (1806.07366).
 
