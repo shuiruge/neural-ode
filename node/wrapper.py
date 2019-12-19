@@ -2,6 +2,7 @@ import tensorflow as tf
 from node.base import reverse_mode_derivative
 
 
+# TODO: compare efficiency with the new.
 def node_wrapper_old(solver, t0, tN):
     """TODO"""
 
@@ -45,7 +46,19 @@ def node_wrapper_old(solver, t0, tN):
 
 
 def node_wrapper(solver, t0):
-    """TODO"""
+    r"""Returns a decorator which wraps phase vector field `f(x, t)` to
+    `F(x, t)` defined as $ F(x, t) = \int_{t_0}^t f(F(x, t), t) dt $,
+    where $ F(x, t_0) = x $. That is, the ending phase point at `t` of
+    the flow starting at `x` at `t0` on the phase vector field.
+
+    Args:
+        solver: ODESolver
+        t0: Time
+            The start time of the phase flow.
+
+    Returns:
+        A decorator.
+    """
 
     def decorator(fn):
         """Decorator that converts an arbitrary function to NODE layer,
@@ -54,13 +67,19 @@ def node_wrapper(solver, t0):
         Args:
             fn: Callable[[tf.Tensor, Time], tf.Tensor]
 
-        Returns: Callable
-            Inputs are input and variables. Outputs are the gradients of them.
+        Returns: Callable[[tf.Tensor, Time], tf.Tensor]
         """
         forward = solver(fn)
 
+        @tf.function
         def node_fn(x, t):
-            """TODO"""
+            """
+            Args:
+                x: tf.Tensor
+                t: Time
+
+            Returns: tf.Tensor
+            """
 
             @tf.custom_gradient
             def custom_gradient_fn(x):
@@ -69,7 +88,7 @@ def node_wrapper(solver, t0):
                 """
                 y = forward(t0, t, x)
 
-                @tf.function  # XXX: essential?
+                @tf.function
                 def grad_fn(grad_y, variables=None):
                     backward = reverse_mode_derivative(solver, fn, variables)
                     _, grad_by_x, grad_by_vars = backward(t0, t, y, grad_y)
