@@ -6,7 +6,7 @@ https://github.com/kmkolasinski/deep-learning-notes/blob/master/seminars/2019-03
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from node.wrapper import node_wrapper
+from node.wrapper import get_node_function
 from node.fix_grid import (
     FixGridODESolver, FixGridODESolverWithTrajectory, rk4_step_fn)
 
@@ -78,7 +78,7 @@ def network(x, t):
     return model(h)
 
 
-wrapped_network = node_wrapper(ode_solver, t0)(network)
+wrapped_network = get_node_function(ode_solver, t0, network)
 
 
 def get_batch():
