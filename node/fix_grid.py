@@ -27,7 +27,7 @@ class FixGridODESolver(ODESolver):
 
         @tf.function
         def forward(start_time, end_time, initial_phase_point):
-            x, t = initial_phase_point, start_time
+            t, x = start_time, initial_phase_point
             interval = tf.linspace(start_time, end_time, self.num_grids)
             for next_t in interval[1:]:
                 dt = next_t - t
