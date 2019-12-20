@@ -78,9 +78,9 @@ def reverse_mode_derivative(ode_solver, network, variables):
         # `tf.gradients` or `g.gradient`, if the third argument is filled,
         # returns the vector-Jacobian-products directly. In fact, TF
         # implements VJP inside, and compute gradients via VJP.
-        grads = g.gradient(output, [state] + variables, -1 * adjoint)
+        vjps = g.gradient(output, [state] + variables, -1 * adjoint)
 
-        new_phase_point = [output] + grads
+        new_phase_point = [output] + vjps
         return new_phase_point
 
     forward = ode_solver(aug_dynamics)

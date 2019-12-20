@@ -57,25 +57,25 @@ def rk4_step_fn(f, t, dt, x):
 
     k1 = f(t, x)
 
+    new_t = t + dt / 2
     if list_input:
         new_x = [xi + k1i * dt / 2 for xi, k1i in zip(x, k1)]
     else:
         new_x = x + k1 * dt / 2
-    new_t = t + dt / 2
     k2 = f(new_t, new_x)
 
+    new_t = t + dt / 2
     if list_input:
         new_x = [xi + k2i * dt / 2 for xi, k2i in zip(x, k2)]
     else:
         new_x = x + k2 * dt / 2
-    new_t = t + dt / 2
     k3 = f(new_t, new_x)
 
+    new_t = t + dt
     if list_input:
         new_x = [xi + k3i * dt for xi, k3i in zip(x, k3)]
     else:
         new_x = x + k3 * dt
-    new_t = t + dt
     k4 = f(new_t, new_x)
 
     if list_input:
@@ -97,14 +97,14 @@ class FixGridODESolverWithTrajectory:
 
         @tf.function
         def forward(start_time, end_time, initial_phase_point):
-            x, t, i = initial_phase_point, start_time, 0
+            i, t, x = 0, start_time, initial_phase_point
             xs = tf.TensorArray(tf.float32, self.num_grids).write(i, x)
 
             interval = tf.linspace(start_time, end_time, self.num_grids)
             for next_t in interval[1:]:
                 dt = next_t - t
                 x = self.step_fn(phase_vector_field, t, dt, x)
-                t, i = next_t, i + 1
+                i, t = i + 1, next_t
                 xs = xs.write(i, x)
             return x, xs.stack()
 
