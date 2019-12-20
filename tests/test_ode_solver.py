@@ -1,12 +1,13 @@
 import tensorflow as tf
-from node.fix_grid import FixGridODESolver, rk4_step_fn
+from node.fix_grid import RKSolver
 
-ode_solver = FixGridODESolver(rk4_step_fn, 100)
+solver = RKSolver(0.01)
 
 
 # Example 1
 
 
+@tf.function
 def f(t, x):
     u, v = tf.unstack(x)
     du_dt = v
@@ -15,18 +16,21 @@ def f(t, x):
 
 
 x0 = tf.constant([1., 1.])
-x1 = ode_solver(f, 0, 1, x0)
+forward = solver(f)
+x1 = forward(0., 1., x0)
 print(x1)
 
 
 # Example 2
 
 
+@tf.function
 def f(t, x):
     dx_dt = tf.sin(t ** 2) * x
     return dx_dt
 
 
 x0 = tf.constant([1.])
-x1 = ode_solver(f, 0, 8, x0)
+forward = solver(f)
+x1 = forward(0., 1., x0)
 print(x1)
