@@ -21,7 +21,7 @@ W = tf.constant([[-0.1, 1.0], [-0.2, -0.1]])
 
 
 @tf.function
-def f(h, t):
+def f(t, h):
     return tf.matmul(h, W)
 
 

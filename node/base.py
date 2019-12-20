@@ -42,7 +42,7 @@ def reverse_mode_derivative(ode_solver, network, variables):
 
     Args:
         ode_solver: ODESolver
-        network: Callable[[tf.Tensor, Time], tf.Tensor]
+        network: Callable[[Time, tf.Tensor], tf.Tensor]
             The $f(x, t)$ in the paper.
         variables: List[tf.Variable]
             The $\theta$ in the paper. In practice, it's a list of variables.
@@ -67,12 +67,12 @@ def reverse_mode_derivative(ode_solver, network, variables):
     """
 
     @tf.function
-    def aug_dynamics(phase_point, time):
+    def aug_dynamics(time, phase_point):
         state, adjoint, *_ = phase_point
 
         with tf.GradientTape() as g:
             g.watch(state)
-            output = network(state, time)
+            output = network(time, state)
         # According to
         # # https://www.tensorflow.org/api_docs/python/tf/custom_gradient
         # `tf.gradients` or `g.gradient`, if the third argument is filled,

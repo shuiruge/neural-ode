@@ -3,8 +3,8 @@ from node.base import reverse_mode_derivative
 
 
 def get_node_function(solver, t0, fn):
-    r"""Converts a phase vector field `f(x, t)` to `F(x, t)` which is defined
-    as $ F(x, t) = \int_{t_0}^t f(F(x, t), t) dt $, where $ F(x, t_0) = x $.
+    r"""Converts a phase vector field `f(t, x)` to `F(t, x)` which is defined
+    as $ F(t, x) = \int_{t_0}^t f(t, F(t, x)) dt $, where $ F(t_0, x) = x $.
     That is, the ending phase point at `t` of the flow starting at `x` at `t0`
     on the phase vector field.
 
@@ -12,18 +12,18 @@ def get_node_function(solver, t0, fn):
         solver: ODESolver
         t0: Time
             The start time of the phase flow.
-        fn: Callable[[tf.Tensor, Time], tf.Tensor]
+        fn: Callable[[Time, tf.Tensor], tf.Tensor]
 
-    Returns: Callable[[tf.Tensor, Time], tf.Tensor]
+    Returns: Callable[[Time, tf.Tensor], tf.Tensor]
     """
     forward = solver(fn)
 
     @tf.function
-    def node_fn(x, t):
+    def node_fn(t, x):
         """
         Args:
-            x: tf.Tensor
             t: Time
+            x: tf.Tensor
 
         Returns: tf.Tensor
         """

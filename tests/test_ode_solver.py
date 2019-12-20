@@ -7,7 +7,7 @@ ode_solver = FixGridODESolver(rk4_step_fn, 100)
 # Example 1
 
 
-def f(x, t):
+def f(t, x):
     u, v = tf.unstack(x)
     du_dt = v
     dv_dt = 5 * v - 6 * u
@@ -22,7 +22,7 @@ print(x1)
 # Example 2
 
 
-def f(x, t):
+def f(t, x):
     dx_dt = tf.sin(t ** 2) * x
     return dx_dt
 

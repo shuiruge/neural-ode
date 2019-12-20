@@ -21,7 +21,7 @@ true_A = tf.constant([[-0.1, 2.0], [-2.0, -0.1]])
 
 
 @tf.function
-def f(x, t):
+def f(t, x):
     return tf.matmul(x ** 3, true_A)
 
 
