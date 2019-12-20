@@ -8,7 +8,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from node.wrapper import get_node_function
 from node.fix_grid import (
-    FixGridODESolver, FixGridODESolverWithTrajectory, rk4_step_fn)
+    RKSolver, FixGridODESolverWithTrajectory, rk4_step_fn)
 
 
 data_size = 1000
@@ -25,12 +25,14 @@ def f(t, x):
     return tf.matmul(x ** 3, true_A)
 
 
+t0 = tf.constant(0.)
+t1 = tf.constant(25.)
+dt = (t1 - t0) / data_size
+true_y0 = tf.constant(true_y0)
+
 ode_solver_with_traj = FixGridODESolverWithTrajectory(rk4_step_fn, data_size)
 traj_forward = ode_solver_with_traj(f)
 
-t0 = tf.constant(0.)
-t1 = tf.constant(25.)
-true_y0 = tf.constant(true_y0)
 _, true_y = traj_forward(t0, t1, true_y0)
 true_y = true_y.numpy().reshape([data_size, 2])
 ts = tf.linspace(t0, t1, data_size).numpy()
@@ -44,27 +46,6 @@ def plot_spiral(trajectories):
     plt.ylabel("y")
 
 
-optimizer = tf.compat.v1.train.RMSPropOptimizer(learning_rate=1e-4)
-ode_solver = FixGridODESolver(rk4_step_fn, batch_time)
-tb = ts[batch_time]
-
-
-# simple network which is used to learn trajectory
-class ODEModel(tf.keras.layers.Layer):
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        self._model = tf.keras.Sequential([
-            tf.keras.layers.Dense(50, activation="tanh"),
-            tf.keras.layers.Dense(2)])
-        self._model.build([None, 2])
-
-    def call(self, x, t):
-        h = x ** 3
-        return self._model(h)
-
-
 model = tf.keras.Sequential([
     tf.keras.layers.Dense(50, activation="tanh"),
     tf.keras.layers.Dense(2)])
@@ -73,12 +54,12 @@ var_list = model.trainable_variables
 
 
 @tf.function
-def network(x, t):
+def network(t, x):
     h = x ** 3
     return model(h)
 
 
-wrapped_network = get_node_function(ode_solver, t0, network)
+node_network = get_node_function(RKSolver(dt), t0, network)
 
 
 def get_batch():
@@ -94,11 +75,15 @@ def get_batch():
     return tf.constant(batch_y0), tf.constant(batch_yN)
 
 
+optimizer = tf.compat.v1.train.RMSPropOptimizer(learning_rate=1e-4)
+tb = ts[batch_time]
+
+
 @tf.function
 def compute_gradients_and_update(batch_y0, batch_yN):
     """Takes start positions (x0, y0) and final positions (xN, yN)"""
     with tf.GradientTape() as g:
-        pred_y = wrapped_network(batch_y0, tb)
+        pred_y = node_network(tb, batch_y0)
         loss = tf.reduce_mean(tf.abs(pred_y - batch_yN))
     grads = g.gradient(loss, var_list)
     optimizer.apply_gradients(zip(grads, var_list))
@@ -111,10 +96,9 @@ for step in range(n_iters):
     loss_history.append(loss.numpy())
     print(f'{step} - {loss.numpy()}')
 
-    if step % 300 == 0:
+    if step % 500 == 0:
         yN, states_history_model = \
             ode_solver_with_traj(network)(t0, t1, true_y0)
-        # plot trajectories
         plot_spiral([true_y, np.concatenate(states_history_model)])
         plt.show()
 

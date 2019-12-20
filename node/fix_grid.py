@@ -14,28 +14,45 @@ class FixGridODESolver(ODESolver):
             Step-function for fixed grid integration method, e.g. Euler's
             method. The last two arguments represents time and time-
             difference respectively.
-        num_grids: int
+        diff_time: Optional[float]
+        num_grids: Optional[int]
 
     Returns: ODESolver
     """
 
-    def __init__(self, step_fn, num_grids):
+    def __init__(self, step_fn, diff_time):
         self.step_fn = step_fn
-        self.num_grids = num_grids
+        self.diff_time = diff_time
 
     def __call__(self, phase_vector_field):
 
         @tf.function
         def forward(start_time, end_time, initial_phase_point):
-            t, x = start_time, initial_phase_point
-            interval = tf.linspace(start_time, end_time, self.num_grids)
-            for next_t in interval[1:]:
-                dt = next_t - t
+            # TODO: illustrate why the `dt` shall be computed as so
+            dt = tf.where(end_time > start_time,
+                          self.diff_time,
+                          -self.diff_time)
+
+            # To compute the `ts`, it's better to use `tf.linspace` instead
+            # of using `tf.range`, since `tf.range(start_time, end_time, dt)`
+            # will raise error when `start_time > end_time`, which will happen
+            # in the backward process. However, `tf.linspace` works well in
+            # this case.
+            num_grids = int((end_time - start_time) / dt + 1)
+            ts = tf.linspace(start_time, end_time, num_grids)
+
+            x = initial_phase_point
+            for t in ts:
                 x = self.step_fn(phase_vector_field, t, dt, x)
-                t = next_t
             return x
 
         return forward
+
+
+class RKSolver(FixGridODESolver):
+
+    def __init__(self, diff_time=None):
+        super().__init__(rk4_step_fn, diff_time)
 
 
 @tf.function
@@ -97,10 +114,10 @@ class FixGridODESolverWithTrajectory:
 
         @tf.function
         def forward(start_time, end_time, initial_phase_point):
+            interval = tf.linspace(start_time, end_time, self.num_grids)
             i, t, x = 0, start_time, initial_phase_point
             xs = tf.TensorArray(tf.float32, self.num_grids).write(i, x)
 
-            interval = tf.linspace(start_time, end_time, self.num_grids)
             for next_t in interval[1:]:
                 dt = next_t - t
                 x = self.step_fn(phase_vector_field, t, dt, x)
