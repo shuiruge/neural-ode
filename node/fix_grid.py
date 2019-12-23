@@ -15,7 +15,6 @@ class FixGridODESolver(ODESolver):
             method. The last two arguments represents time and time-
             difference respectively.
         diff_time: Optional[float]
-        num_grids: Optional[int]
 
     Returns: ODESolver
     """
@@ -25,25 +24,28 @@ class FixGridODESolver(ODESolver):
         self.diff_time = diff_time
 
     def __call__(self, phase_vector_field):
+        f = phase_vector_field
 
         @tf.function
         def forward(start_time, end_time, initial_phase_point):
+            t0, tN, x = start_time, end_time, initial_phase_point
+            dt = self.diff_time
+
+            if abs(tN - t0) < dt:
+                return self.step_fn(f, t0, dt, x)
+
             # TODO: illustrate why the `dt` shall be computed as so
-            dt = tf.where(end_time > start_time,
-                          self.diff_time,
-                          -self.diff_time)
+            dt = tf.where(tN > t0, dt, -dt)
 
             # To compute the `ts`, it's better to use `tf.linspace` instead
-            # of using `tf.range`, since `tf.range(start_time, end_time, dt)`
-            # will raise error when `start_time > end_time`, which will happen
-            # in the backward process. However, `tf.linspace` works well in
-            # this case.
-            num_grids = int((end_time - start_time) / dt + 1)
-            ts = tf.linspace(start_time, end_time, num_grids)
+            # of using `tf.range`, since `tf.range(t0, tN, dt)` will raise
+            # error when `t0 > tN`, which will happen in the backward process.
+            # However, `tf.linspace` works well in this case.
+            N = int((tN - t0) / dt + 1)
+            ts = tf.linspace(t0, tN, N)
 
-            x = initial_phase_point
             for t in ts:
-                x = self.step_fn(phase_vector_field, t, dt, x)
+                x = self.step_fn(f, t, dt, x)
             return x
 
         return forward
@@ -51,7 +53,7 @@ class FixGridODESolver(ODESolver):
 
 class RKSolver(FixGridODESolver):
 
-    def __init__(self, diff_time=None):
+    def __init__(self, diff_time):
         super().__init__(rk4_step_fn, diff_time)
 
 
@@ -101,28 +103,3 @@ def rk4_step_fn(f, t, dt, x):
     else:
         new_x = x + (k1 + 2 * k2 + 2 * k3 + k4) / 6 * dt
     return new_x
-
-
-class FixGridODESolverWithTrajectory:
-    """For test"""
-
-    def __init__(self, step_fn, num_grids):
-        self.step_fn = step_fn
-        self.num_grids = num_grids
-
-    def __call__(self, phase_vector_field):
-
-        @tf.function
-        def forward(start_time, end_time, initial_phase_point):
-            interval = tf.linspace(start_time, end_time, self.num_grids)
-            i, t, x = 0, start_time, initial_phase_point
-            xs = tf.TensorArray(tf.float32, self.num_grids).write(i, x)
-
-            for next_t in interval[1:]:
-                dt = next_t - t
-                x = self.step_fn(phase_vector_field, t, dt, x)
-                i, t = i + 1, next_t
-                xs = xs.write(i, x)
-            return x, xs.stack()
-
-        return forward

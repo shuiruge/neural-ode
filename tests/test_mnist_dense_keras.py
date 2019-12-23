@@ -1,4 +1,3 @@
-import numpy as np
 import tensorflow as tf
 from tensorflow.keras.datasets import mnist
 from node.fix_grid import RKSolver
@@ -32,11 +31,11 @@ class MyLayer(tf.keras.layers.Layer):
         return y
 
 
-def process(X, y):   
+def process(X, y):
     X = X / 255.
     X = tf.reshape(X, [-1, 28 * 28])
     y = tf.one_hot(y, 10)
-    return tf.cast(X, tf.float64), tf.cast(y, tf.float64)
+    return tf.cast(X, tf.float32), tf.cast(y, tf.float32)
 
 
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -45,7 +44,7 @@ x_test, y_test = process(x_test, y_test)
 
 model = tf.keras.Sequential([
     tf.keras.layers.Input([28 * 28]),
-    MyLayer(dt=1e-2, num_grids=100),
+    MyLayer(dt=1e-2, num_grids=10),
     tf.keras.layers.Dense(10, activation='softmax')
 ])
 
