@@ -10,11 +10,11 @@ class FixGridODESolver(ODESolver):
     (GitHub @kmkolasinski).
 
     Args:
-        step_fn: Callable[[PhaseVectorField, Time, Time, PhasePoint],
-                          PhasePoint]
+        step_fn:
             Step-function for fixed grid integration method, e.g. Euler's
-            method. The last two arguments represents time and time-
-            difference respectively.
+            method. The input is the phase vector field. Returns a callable
+            that makes one step forward, arguments for time, time difference,
+            and current phase point, and output for the next phase point.
         diff_time: Optional[float]
 
     Returns: ODESolver
@@ -25,7 +25,7 @@ class FixGridODESolver(ODESolver):
         self.diff_time = diff_time
 
     def __call__(self, phase_vector_field):
-        f = phase_vector_field
+        step_forward = self.step_fn(phase_vector_field)
 
         @tf.function
         def forward(start_time, end_time, initial_phase_point):
@@ -33,7 +33,7 @@ class FixGridODESolver(ODESolver):
             dt = self.diff_time
 
             if abs(tN - t0) < dt:
-                return self.step_fn(f, t0, dt, x)
+                return step_forward(t0, dt, x)
 
             # TODO: illustrate why the `dt` shall be computed as so
             dt = tf.where(tN > t0, dt, -dt)
@@ -46,7 +46,7 @@ class FixGridODESolver(ODESolver):
             ts = tf.linspace(t0, tN, N)
 
             for t in ts:
-                x = self.step_fn(f, t, dt, x)
+                x = step_forward(t, dt, x)
             return x
 
         return forward
@@ -58,7 +58,7 @@ class RKSolver(FixGridODESolver):
         super().__init__(rk4_step_fn, diff_time)
 
 
-def euler_step_fn(f, t, dt, x):
+def euler_step_fn(f):
 
     @tf.function
     def step_forward(t, dt, x):
@@ -66,10 +66,10 @@ def euler_step_fn(f, t, dt, x):
         new_x = nest_map(lambda x, k1: x + k1 * dt, x, k1)
         return new_x
 
-    return step_forward(t, dt, x)
+    return step_forward
 
 
-def rk4_step_fn(f, t, dt, x):
+def rk4_step_fn(f):
 
     @tf.function
     def step_forward(t, dt, x):
@@ -93,4 +93,4 @@ def rk4_step_fn(f, t, dt, x):
             x, k1, k2, k3, k4)
         return new_x
 
-    return step_forward(t, dt, x)
+    return step_forward
