@@ -1,4 +1,28 @@
-r"""C.f. `./test_mnist_dense.py`"""
+r"""
+This script tests `node.base.get_node_function` on MNIST dataset without using
+`keras` model API.
+
+Without using `keras` API, the RAM occupation is verily O(1). As
+
+```
+@tf.function
+def train(dataset):
+    step = 0
+    for x, y in dataset:
+        loss = train_one_step(x, y)
+        tf.print('step', step, 'loss', loss)
+        step += 1
+
+dataset = ...
+train(dataset)
+```
+
+However, without the `tf.function` decorator, the RAM grows from 380M to 3G
+as the `num_grids` parameter goes from `10` to `1000`.
+
+Why so? Maybe because of the caching mechanism of Python, on which TF
+optimizes.
+"""
 
 import numpy as np
 import tensorflow as tf
@@ -56,12 +80,32 @@ model = tf.keras.Sequential([
     tf.keras.layers.Dense(10, activation='softmax')
 ])
 
-model.compile(
-    optimizer=tf.keras.optimizers.Adam(),
-    loss='categorical_crossentropy',
-    metrics=['accuracy'])
-model.summary()
+optimizer = tf.compat.v1.train.AdamOptimizer()
+loss_fn = tf.losses.CategoricalCrossentropy()
 
-model.fit(x_train, y_train,
-          epochs=10,
-          validation_data=(x_test, y_test))
+
+@tf.function
+def train_one_step(x, y):
+    with tf.GradientTape() as tape:
+        outputs = model(x)
+        loss = loss_fn(y, outputs)
+    grads = tape.gradient(loss, model.trainable_variables)
+    optimizer.apply_gradients(zip(grads, model.trainable_variables))
+    return loss
+
+
+@tf.function
+def train(dataset):
+    step = 0
+    for x, y in dataset:
+        loss = train_one_step(x, y)
+        tf.print('step', step, 'loss', loss)
+        step += 1
+
+
+num_epochs = 10
+batch_size = 64
+
+dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
+dataset = dataset.repeat(num_epochs).batch(batch_size)
+train(dataset)
