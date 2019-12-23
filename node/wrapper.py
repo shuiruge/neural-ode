@@ -1,4 +1,3 @@
-import tensorflow as tf
 from node.base import get_node_function
 
 

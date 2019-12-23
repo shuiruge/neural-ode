@@ -1,4 +1,10 @@
 """
+This script tests
+
+    * `node.base.get_node_function`, and that
+
+    * the RAM occupaton is O(1).
+
 Reference:
 https://github.com/kmkolasinski/deep-learning-notes/blob/master/seminars/2019-03-Neural-Ordinary-Differential-Equations/1.Demo_spiral.ipynb  # noqa:E501
 """
@@ -6,7 +12,7 @@ https://github.com/kmkolasinski/deep-learning-notes/blob/master/seminars/2019-03
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from node.wrapper import get_node_function
+from node.base import get_node_function
 from node.fix_grid import RKSolver
 from node.utils import tracer
 
@@ -36,12 +42,9 @@ true_y = true_y.numpy().reshape([data_size, 2])
 ts = tf.linspace(t0, t1, data_size).numpy()
 
 
-def plot_spiral(trajectories):
-    for path in trajectories:
-        plt.plot(*path.T)
-    plt.axis("equal")
-    plt.xlabel("x")
-    plt.ylabel("y")
+def plot_spiral(trajectory):
+    plt.plot([x for x, y in trajectory],
+             [y for x, y in trajectory])
 
 
 model = tf.keras.Sequential([
@@ -95,10 +98,9 @@ for step in range(n_iters):
     print(f'{step} - {loss.numpy()}')
 
     if step % 500 == 0:
-        yN, states_history_model = \
-            ode_solver_with_traj(network)(t0, t1, true_y0)
-        plot_spiral([true_y, np.concatenate(states_history_model)])
+        states_history_model = (traj_forward(t0, t1, dt, true_y0)
+                                .numpy()
+                                .reshape([data_size, 2]))
+        plot_spiral(true_y)
+        plot_spiral(states_history_model)
         plt.show()
-
-plot_spiral([true_y, np.concatenate(states_history_model)])
-plt.show()
