@@ -1,5 +1,6 @@
 import tensorflow as tf
 from node.base import ODESolver
+from node.utils import nest_map
 
 
 class FixGridODESolver(ODESolver):
@@ -57,49 +58,39 @@ class RKSolver(FixGridODESolver):
         super().__init__(rk4_step_fn, diff_time)
 
 
-@tf.function
 def euler_step_fn(f, t, dt, x):
-    list_input = isinstance(x, list)
 
-    k1 = f(t, x)
+    @tf.function
+    def step_forward(t, dt, x):
+        k1 = f(t, x)
+        new_x = nest_map(lambda x, k1: x + k1 * dt, x, k1)
+        return new_x
 
-    if list_input:
-        new_x = [xi + k1i * dt for xi, k1i in zip(x, k1)]
-    else:
-        new_x = x + k1 * dt
-    return new_x
+    return step_forward(t, dt, x)
 
 
-@tf.function
 def rk4_step_fn(f, t, dt, x):
-    list_input = isinstance(x, list)
 
-    k1 = f(t, x)
+    @tf.function
+    def step_forward(t, dt, x):
+        k1 = f(t, x)
 
-    new_t = t + dt / 2
-    if list_input:
-        new_x = [xi + k1i * dt / 2 for xi, k1i in zip(x, k1)]
-    else:
-        new_x = x + k1 * dt / 2
-    k2 = f(new_t, new_x)
+        new_t = t + dt / 2
+        new_x = nest_map(lambda x, k1:  x + k1 * dt / 2, x, k1)
+        k2 = f(new_t, new_x)
 
-    new_t = t + dt / 2
-    if list_input:
-        new_x = [xi + k2i * dt / 2 for xi, k2i in zip(x, k2)]
-    else:
-        new_x = x + k2 * dt / 2
-    k3 = f(new_t, new_x)
+        new_t = t + dt / 2
+        new_x = nest_map(lambda x, k2: x + k2 * dt / 2, x, k2)
+        k3 = f(new_t, new_x)
 
-    new_t = t + dt
-    if list_input:
-        new_x = [xi + k3i * dt for xi, k3i in zip(x, k3)]
-    else:
-        new_x = x + k3 * dt
-    k4 = f(new_t, new_x)
+        new_t = t + dt
+        new_x = nest_map(lambda x, k3: x + k3 * dt, x, k3)
+        k4 = f(new_t, new_x)
 
-    if list_input:
-        new_x = [xi + (k1i + 2 * k2i + 2 * k3i + k4i) / 6 * dt
-                 for xi, k1i, k2i, k3i, k4i in zip(x, k1, k2, k3, k4)]
-    else:
-        new_x = x + (k1 + 2 * k2 + 2 * k3 + k4) / 6 * dt
-    return new_x
+        new_x = nest_map(
+            lambda x, k1, k2, k3, k4:
+                x + (k1 + 2 * k2 + 2 * k3 + k4) / 6 * dt,
+            x, k1, k2, k3, k4)
+        return new_x
+
+    return step_forward(t, dt, x)

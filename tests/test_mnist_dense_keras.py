@@ -1,7 +1,12 @@
+import numpy as np
 import tensorflow as tf
-from tensorflow.keras.datasets import mnist
 from node.fix_grid import RKSolver
 from node.wrapper import get_node_function
+
+
+# for reproducibility
+np.random.seed(42)
+tf.random.set_seed(42)
 
 
 class MyLayer(tf.keras.layers.Layer):
@@ -38,6 +43,7 @@ def process(X, y):
     return tf.cast(X, tf.float32), tf.cast(y, tf.float32)
 
 
+mnist = tf.keras.datasets.mnist
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 x_train, y_train = process(x_train, y_train)
 x_test, y_test = process(x_test, y_test)
