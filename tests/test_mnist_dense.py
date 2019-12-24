@@ -6,6 +6,16 @@ Without using `keras` API, the RAM occupation is verily O(1). As
 
 ```
 @tf.function
+def train_one_step(x, y):
+    with tf.GradientTape() as tape:
+        outputs = model(x)
+        loss = loss_fn(y, outputs)
+    grads = tape.gradient(loss, model.trainable_variables)
+    optimizer.apply_gradients(zip(grads, model.trainable_variables))
+    return loss
+
+
+@tf.function
 def train(dataset):
     step = 0
     for x, y in dataset:
@@ -22,6 +32,9 @@ as the `num_grids` parameter goes from `10` to `1000`.
 
 Why so? Maybe because of the caching mechanism of Python, on which TF
 optimizes.
+
+So, make all things C++ (compliled by TF) is crucial! The efficiency increases
+madly!
 """
 
 import numpy as np
@@ -108,4 +121,21 @@ batch_size = 64
 
 dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
 dataset = dataset.repeat(num_epochs).batch(batch_size)
+
+# one approach
 train(dataset)
+# runs fast
+# RAM ~400M -> ~400M as num_grids = 10 -> 1000
+
+# other approach
+# step = 0
+# for x, y in dataset:
+#     with tf.GradientTape() as tape:
+#         outputs = model(x)
+#         loss = loss_fn(y, outputs)
+#     grads = tape.gradient(loss, model.trainable_variables)
+#     optimizer.apply_gradients(zip(grads, model.trainable_variables))
+#     tf.print('step', step, 'loss', loss)
+#     step += 1
+# runs not as that fast
+# RAM ~400M -> ~2GM as num_grids = 10 -> 1000
