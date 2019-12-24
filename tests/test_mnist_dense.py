@@ -27,7 +27,7 @@ dataset = ...
 train(dataset)
 ```
 
-However, without the `tf.function` decorator, the RAM grows from 380M to 3G
+However, without the `tf.function` decorator, the RAM grows from 410M to ~3G
 as the `num_grids` parameter goes from `10` to `1000`.
 
 Why so? Maybe because of the caching mechanism of Python, on which TF
@@ -125,7 +125,7 @@ dataset = dataset.repeat(num_epochs).batch(batch_size)
 # one approach
 train(dataset)
 # runs fast
-# RAM ~400M -> ~400M as num_grids = 10 -> 1000
+# RAM 410M -> 410M as num_grids = 10 -> 1000
 
 # other approach
 # step = 0
@@ -138,4 +138,4 @@ train(dataset)
 #     tf.print('step', step, 'loss', loss)
 #     step += 1
 # runs not as that fast
-# RAM ~400M -> ~2GM as num_grids = 10 -> 1000
+# RAM 410M -> ~3G as num_grids = 10 -> 1000

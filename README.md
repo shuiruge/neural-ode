@@ -12,4 +12,5 @@ Neural ODE.
 - [ ] Generalizing the input type from `tf.Tensor` to `Sequence[tf.Tensor]`.
 - [ ] Adaptive time interval.
 - [ ] Add adaptive solvers.
+- [ ] Convert to TF code style.
 - [ ] Re-write ALBERT with NODE.
