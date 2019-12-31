@@ -27,13 +27,13 @@ def soft_reduce_min(x, axis=None, keepdims=False, factor=1.):
 # XXX: Currently, `tf.function` does not support keywords arguments
 # in graph mode. C.f.,
 # https://github.com/tensorflow/tensorflow/blob/5fc194159e3b0cf644a33fdd2df21549d3c6e973/tensorflow/python/ops/custom_gradient.py#L301  # noqa:E501
-def soft_renormalize(x, axis=None, factor=1.):
+def soft_normalize(x, axis=None, factor=1.):
     M = soft_reduce_max(x, axis=axis, keepdims=True, factor=factor)
     m = soft_reduce_min(x, axis=axis, keepdims=True, factor=factor)
     return (x - m) / (M - m)
 
 
-def renormalize(x, axis=None):
+def normalize(x, axis=None):
     """Hard version"""
     M = tf.reduce_max(x, axis=axis, keepdims=True)
     m = tf.reduce_min(x, axis=axis, keepdims=True)
@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     with tf.GradientTape() as g:
         g.watch(x)
-        y = soft_renormalize(x, axis=1, factor=10.)
+        y = soft_normalize(x, axis=1, factor=10.)
         tf.print(y)
 
     print(g.gradient(y, x, x + 1.))
