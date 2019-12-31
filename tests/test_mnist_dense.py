@@ -39,7 +39,7 @@ madly!
 
 import numpy as np
 import tensorflow as tf
-from node.base import get_node_function
+from node.core import get_node_function
 from node.fix_grid import RKSolver
 
 

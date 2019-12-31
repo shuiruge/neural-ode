@@ -1,4 +1,4 @@
-from node.base import get_node_function
+from node.core import get_node_function
 
 
 def node_wrapper(solver, t0):

@@ -12,9 +12,8 @@ https://github.com/kmkolasinski/deep-learning-notes/blob/master/seminars/2019-03
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from node.base import get_node_function
+from node.core import get_node_function, tracer
 from node.fix_grid import RKSolver
-from node.utils import tracer
 
 
 data_size = 1000

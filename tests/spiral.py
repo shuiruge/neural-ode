@@ -8,7 +8,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from node.fix_grid import (
     FixGridODESolver, FixGridODESolverWithTrajectory, rk4_step_fn)
-from node.base import reverse_mode_derivative
+from node.core import reverse_mode_derivative
 
 
 data_size = 1000
