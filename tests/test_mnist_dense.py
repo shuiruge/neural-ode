@@ -89,7 +89,7 @@ x_test, y_test = process(x_test, y_test)
 
 model = tf.keras.Sequential([
     tf.keras.layers.Input([28 * 28]),
-    MyLayer(dt=1e-2, num_grids=10),
+    MyLayer(dt=1e-1, num_grids=10),
     tf.keras.layers.Dense(10, activation='softmax')
 ])
 
