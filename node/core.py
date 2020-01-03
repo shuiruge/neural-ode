@@ -62,7 +62,7 @@ def reverse_mode_derivative(ode_solver, network, variables):
                                   end_time=start_time,
                                   initial_phase_point=final_phase_point)
         init_state, init_loss_gradient, *grad_loss_by_vars = ode_final_value
-        return init_state, init_loss_gradient, grad_loss_by_vars
+        return init_state, init_loss_gradient, list(grad_loss_by_vars)
 
     return backward
 
@@ -83,6 +83,14 @@ def get_node_function(solver, t0, fn):
     """
     forward = solver(fn)
 
+    def process_args(args):
+        if len(args) == 1:  # single arg in `**args`
+            return args[0]
+        else:
+            # `args` is a tuple, we need list instead for unifying
+            # the nesting structures
+            return list(args)
+
     @tf.function
     def node_fn(t, x):
         """
@@ -93,49 +101,56 @@ def get_node_function(solver, t0, fn):
         Returns: PhasePoint
         """
 
-        # XXX: `tf.custom_gradient` has its own bug, which affects the code
-        # here. C.f. https://github.com/tensorflow/tensorflow/issues/31945
-        # Because of this, currently, `node` does NOT support multi-inputs.
         @tf.custom_gradient
-        def custom_gradient_fn(x):
+        def custom_gradient_fn(*x):
             """For matching the signature of `tf.custom_gradient`
             https://tensorflow.google.cn/api_docs/python/tf/custom_gradient
+
+            Explicitly, the inputs to this function shall be tensors, each as
+            one arg; the output `grad_fn` accepts tensors, each as one arg, and
+            kwargs involving the key "variables".
             """
+            x = process_args(x)
+
             y = forward(t0, t, x)
 
             # TF will catch all the variables watched by `tf.GradientTape`,
             # and pass them into the `grad_fn` via the `variables` kwarg.
             @tf.function
-            def grad_fn(grad_ys, variables=None):
+            def grad_fn(*grad_ys, **kwargs):
+                # XXX: `tf.custom_gradient` has an unfixed
+                # [bug](https://github.com/tensorflow/tensorflow/issues/31945).
+                # Because of this, temporally, we need some [hacking]
+                # (https://github.com/tensorflow/tensorflow/issues/31945#issuecomment-545801180)  # noqa:E501
+                # TODO: Re-write this part when the bug is fixed.
+                grad_ys = process_args(grad_ys)
+                variables = kwargs.get('variables', None)
+
                 backward = reverse_mode_derivative(solver, fn, variables)
                 _, grad_by_x, grad_by_vars = backward(t0, t, y, grad_ys)
                 return [grad_by_x], grad_by_vars
 
             return y, grad_fn
 
-        return custom_gradient_fn(x)
+        if isinstance(x, list):
+            return custom_gradient_fn(*x)
+        else:
+            return custom_gradient_fn(x)
 
     return node_fn
 
 
 def nest_map(fn, *args):  # TODO: add example.
-    """All args shall share the same nesting structure."""
+    r"""All args shall share the same nesting structure.
+
+    **ONLY SUPPORTS LIST NESTING.**
+    """
     _check_same_structure(*args)
 
-    if not _is_nested(args[0]):
+    if not isinstance(args[0], list):
         return fn(*args)
 
-    if isinstance(args[0], tuple):
-        return tuple(nest_map(fn, *subargs) for subargs in zip(*args))
-    elif isinstance(args[0], list):
-        return list(nest_map(fn, *subargs) for subargs in zip(*args))
-    else:
-        raise ValueError('XXX')
-
-
-def _is_nested(x):
-    """Auxillary function of `nest_map`."""
-    return isinstance(x, (list, tuple))
+    return [nest_map(fn, *subargs) for subargs in zip(*args)]
 
 
 def _check_same_structure(*args):
