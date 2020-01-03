@@ -93,6 +93,9 @@ def get_node_function(solver, t0, fn):
         Returns: PhasePoint
         """
 
+        # XXX: `tf.custom_gradient` has its own bug, which affects the code
+        # here. C.f. https://github.com/tensorflow/tensorflow/issues/31945
+        # Because of this, currently, `node` does NOT support multi-inputs.
         @tf.custom_gradient
         def custom_gradient_fn(x):
             """For matching the signature of `tf.custom_gradient`

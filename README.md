@@ -14,3 +14,7 @@ Neural ODE.
 - [ ] Add adaptive solvers.
 - [ ] Convert to TF code style.
 - [ ] Re-write ALBERT with NODE.
+
+## Notes
+
+1. `tf.custom_gradient` has an unfixed [bug](https://github.com/tensorflow/tensorflow/issues/31945). Because of this, currently, `node` does NOT support multi-inputs.
