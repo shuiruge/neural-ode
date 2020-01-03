@@ -1,13 +1,12 @@
 import tensorflow as tf
 from node.wrapper import node_wrapper
-from node.fix_grid import FixGridODESolver, rk4_step_fn
+from node.fix_grid import RKSolver
 
 
-data_size = 10
 x = tf.constant([[2., 0]])
 # x = tf.constant([[-0.1, 2.0], [-2.0, -0.1]])
 
-solver = FixGridODESolver(rk4_step_fn, data_size)
+solver = RKSolver(0.1)
 dense = tf.keras.layers.Dense(2)
 
 
