@@ -5,7 +5,7 @@ from typing import Union, List, Callable
 
 Time = float
 PhasePoint = Union[tf.Tensor, List[tf.Tensor]]
-PhaseVectorField = Callable[[PhasePoint, Time], PhasePoint]
+PhaseVectorField = Callable[[Time, PhasePoint], PhasePoint]
 
 
 class ODESolver:

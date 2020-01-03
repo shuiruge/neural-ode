@@ -8,7 +8,7 @@ def reverse_mode_derivative(ode_solver, network, variables):
 
     Args:
         ode_solver: ODESolver
-        network: Callable[[Time, tf.Tensor], tf.Tensor]
+        network: PhaseVectorField
             The $f(x, t)$ in the paper.
         variables: List[tf.Variable]
             The $\theta$ in the paper. In practice, it's a list of variables.
@@ -18,14 +18,14 @@ def reverse_mode_derivative(ode_solver, network, variables):
         Args:
             start_time: Time
             end_time: Time
-            final_state: tf.Tensor
+            final_state: PhasePoint
                 The $z^{\alpha}(t_N)$ in the paper. The final outputs of the
                 Neural ODE.
-            final_loss_gradient: tf.Tensor
+            final_loss_gradient: PhasePoint
                 The $\frac{\partial L}{\partial z^{\alpha}(t_N)}$ in the paper.
                 The gradient of loss by the final output of the Neural ODE
                 (i.e. by the `final_state`).
-        Returns: Tuple[tf.Tensor, tf.Tensor, List[tf.Tensor]]
+        Returns: Tuple[PhasePoint, PhasePoint, List[tf.Tensor]]
             For the initial state, the gradient of loss by the initial state,
             and the gradient of loss by the variables `variables`. In the
             paper, they are $z(t_0)$, $\partial L / \partial z^{\alpha}(t_0)$,
@@ -33,8 +33,9 @@ def reverse_mode_derivative(ode_solver, network, variables):
     """
 
     @tf.function
-    def aug_dynamics(time, phase_point):
-        state, adjoint, *_ = phase_point
+    def aug_dynamics(time, aug_phase_point):
+        state, adjoint, *_ = aug_phase_point
+        neg_adjoint = nest_map(lambda x: -1 * x, adjoint)
 
         with tf.GradientTape() as g:
             g.watch(state)
@@ -44,10 +45,10 @@ def reverse_mode_derivative(ode_solver, network, variables):
         # `tf.gradients` or `g.gradient`, if the third argument is filled,
         # returns the vector-Jacobian-products directly. In fact, TF
         # implements VJP inside, and compute gradients via VJP.
-        vjps = g.gradient(output, [state] + variables, -1 * adjoint)
+        vjps = g.gradient(output, [state] + variables, neg_adjoint)
 
-        new_phase_point = [output] + vjps
-        return new_phase_point
+        new_aug_phase_point = [output] + vjps
+        return new_aug_phase_point
 
     forward = ode_solver(aug_dynamics)
 
@@ -76,9 +77,9 @@ def get_node_function(solver, t0, fn):
         solver: ODESolver
         t0: Time
             The start time of the phase flow.
-        fn: Callable[[Time, tf.Tensor], tf.Tensor]
+        fn: PhaseVectorField
 
-    Returns: Callable[[Time, tf.Tensor], tf.Tensor]
+    Returns: PhaseVectorField
     """
     forward = solver(fn)
 
@@ -87,9 +88,9 @@ def get_node_function(solver, t0, fn):
         """
         Args:
             t: Time
-            x: tf.Tensor
+            x: PhasePoint
 
-        Returns: tf.Tensor
+        Returns: PhasePoint
         """
 
         @tf.custom_gradient
@@ -102,9 +103,9 @@ def get_node_function(solver, t0, fn):
             # TF will catch all the variables watched by `tf.GradientTape`,
             # and pass them into the `grad_fn` via the `variables` kwarg.
             @tf.function
-            def grad_fn(grad_y, variables=None):
+            def grad_fn(grad_ys, variables=None):
                 backward = reverse_mode_derivative(solver, fn, variables)
-                _, grad_by_x, grad_by_vars = backward(t0, t, y, grad_y)
+                _, grad_by_x, grad_by_vars = backward(t0, t, y, grad_ys)
                 return [grad_by_x], grad_by_vars
 
             return y, grad_fn
@@ -121,7 +122,12 @@ def nest_map(fn, *args):  # TODO: add example.
     if not _is_nested(args[0]):
         return fn(*args)
 
-    return [nest_map(fn, *subargs) for subargs in zip(*args)]
+    if isinstance(args[0], tuple):
+        return tuple(nest_map(fn, *subargs) for subargs in zip(*args))
+    elif isinstance(args[0], list):
+        return list(nest_map(fn, *subargs) for subargs in zip(*args))
+    else:
+        raise ValueError('XXX')
 
 
 def _is_nested(x):
@@ -130,31 +136,16 @@ def _is_nested(x):
 
 
 def _check_same_structure(*args):
-    """Auxillary function of `nest_map`."""
-    if len(args) == 1:
-        return
-
-    first, *rests = args
-
-    if not _is_nested(first):
-        for arg in rests:
-            if _is_nested(arg):
-                raise ValueError()
-        return
-
-    for arg in rests:
-        if not _is_nested(arg):
-            raise ValueError()
-        if len(arg) != len(first):
-            raise ValueError()
-    return
+    first_arg, *rest_args = args
+    for arg in rest_args:
+        tf.nest.assert_same_structure(first_arg, arg)
 
 
 def tracer(solver, fn):
     """
     Args:
         solver: ODESolver
-        fn: Callable[[Time, tf.Tensor], tf.Tensor]
+        fn: PhaseVectorField
 
     Returns: Callable[[Time, Time, Time, tf.Tensor], tf.TensorArray]
         The arguments are start time, end time, time difference, and

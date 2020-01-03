@@ -76,7 +76,7 @@ def rk4_step_fn(f):
         k1 = f(t, x)
 
         new_t = t + dt / 2
-        new_x = nest_map(lambda x, k1:  x + k1 * dt / 2, x, k1)
+        new_x = nest_map(lambda x, k1: x + k1 * dt / 2, x, k1)
         k2 = f(new_t, new_x)
 
         new_t = t + dt / 2
