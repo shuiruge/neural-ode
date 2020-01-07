@@ -32,8 +32,11 @@ class FixGridODESolver(ODESolver):
             t0, tN, x = start_time, end_time, initial_phase_point
             dt = self.diff_time
 
-            if abs(tN - t0) < dt:
-                return step_forward(t0, dt, x)
+            if tN == t0:
+                return x
+
+            if tf.abs(tN - t0) < dt:
+                return step_forward(t0, tN - t0, x)
 
             # TODO: illustrate why the `dt` shall be computed as so
             dt = tf.where(tN > t0, dt, -dt)
@@ -42,10 +45,9 @@ class FixGridODESolver(ODESolver):
             # of using `tf.range`, since `tf.range(t0, tN, dt)` will raise
             # error when `t0 > tN`, which will happen in the backward process.
             # However, `tf.linspace` works well in this case.
-            N = int((tN - t0) / dt + 1)
-            ts = tf.linspace(t0, tN, N)
+            N = tf.cast((tN - t0) / dt + 1, tf.int32)
 
-            for t in ts:
+            for t in tf.linspace(t0, tN, N):
                 x = step_forward(t, dt, x)
             return x
 
