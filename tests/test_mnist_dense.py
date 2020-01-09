@@ -41,6 +41,7 @@ import numpy as np
 import tensorflow as tf
 from node.core import get_node_function
 from node.fix_grid import RKSolver
+from node.utils.initializers import GlorotUniform
 
 
 # for reproducibility
@@ -48,9 +49,16 @@ np.random.seed(42)
 tf.random.set_seed(42)
 
 
+@tf.function
+def normalize(x, axis=None):
+    M = tf.reduce_max(x, axis, keepdims=True)
+    m = tf.reduce_min(x, axis, keepdims=True)
+    return (x - m) / (M - m + 1e-8)
+
+
 class MyLayer(tf.keras.layers.Layer):
 
-    def __init__(self, dt, num_grids, **kwargs):
+    def __init__(self, units, dt, num_grids, **kwargs):
         super().__init__(**kwargs)
         self.dt = dt
         self.num_grids = num_grids
@@ -58,17 +66,24 @@ class MyLayer(tf.keras.layers.Layer):
         t0 = tf.constant(0.)
         self.tN = t0 + num_grids * dt
 
-        input_dim = 28 * 28
         self._model = tf.keras.Sequential([
-            tf.keras.layers.Dense(32, activation='relu'),
-            tf.keras.layers.Dense(input_dim, activation='relu'),
+            tf.keras.layers.Dense(128, activation='relu',
+                                  kernel_initializer=GlorotUniform(1e-1)),
+            tf.keras.layers.Dense(units, activation='relu',
+                                  kernel_initializer=GlorotUniform(1e-1)),
         ])
-        self._model.build([None, input_dim])
+        self._model.build([None, units])
 
+        @tf.function
         def fn(t, x):
-            return self._model(x)
+            z = self._model(x)
+            with tf.GradientTape() as g:
+                g.watch(x)
+                r = normalize(x, axis=-1)
+            return g.gradient(r, x, z)
 
-        self._node_fn = get_node_function(RKSolver(self.dt), 0., fn)
+        self._node_fn = get_node_function(
+            RKSolver(self.dt), tf.constant(0.), fn)
 
     def call(self, x):
         y = self._node_fn(self.tN, x)
@@ -89,7 +104,8 @@ x_test, y_test = process(x_test, y_test)
 
 model = tf.keras.Sequential([
     tf.keras.layers.Input([28 * 28]),
-    MyLayer(dt=1e-1, num_grids=10),
+    tf.keras.layers.Dense(64, activation='relu'),
+    MyLayer(64, dt=1e-1, num_grids=10),
     tf.keras.layers.Dense(10, activation='softmax')
 ])
 
