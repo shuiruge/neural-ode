@@ -124,22 +124,21 @@ def train_one_step(x, y):
 
 
 @tf.function
-def train(dataset):
-    step = 0
-    for x, y in dataset:
+def train(x_train, y_train, num_epochs, batch_size):
+    dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
+    dataset = dataset.shuffle(1000).repeat(num_epochs).batch(batch_size)
+
+    for i, (x, y) in dataset.enumerate():
         loss = train_one_step(x, y)
-        tf.print('step', step, 'loss', loss)
-        step += 1
+        if i % 100 == 0:
+            tf.print(i, loss)
 
 
 num_epochs = 10
 batch_size = 64
 
-dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
-dataset = dataset.repeat(num_epochs).batch(batch_size)
-
 # one approach
-train(dataset)
+train(x_train, y_train, num_epochs, batch_size)
 # runs fast
 # RAM 410M -> 410M as num_grids = 10 -> 1000
 
