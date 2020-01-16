@@ -43,6 +43,60 @@
 
   By <math|z<rsub|i+1><around*|(|t|)>=z<rsub|i><around*|(|t|)>+\<epsilon\>f<around*|(|z<rsub|i><around*|(|t|)>,t;\<theta\>|)>>,
   <math|\<partial\>z<rsub|i>/\<partial\>\<theta\>=\<epsilon\>\<partial\>f<around*|(|z<rsub|i>,t;\<theta\>|)>/\<partial\>\<theta\>>
+
+  <section|Energy Based>
+
+  <\lemma>
+    Given an arbitrary lower bounded function
+    <math|<with|math-font|cal|E>\<in\>C<rsup|1><around*|(|\<bbb-R\><rsup|N>,\<bbb-R\>|)>>,
+    for any trajectory <math|z<around*|(|t|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>,\<bbb-R\><rsup|N>|)>>,
+    <math|d<with|math-font|cal|E>/dt\<leqslant\>0> along
+    <math|z<around*|(|t|)>> if
+
+    <\equation*>
+      <frac|dz<rsup|\<alpha\>>|dt><around*|(|t|)>=-<frac|\<partial\><with|math-font|cal|E>|\<partial\>z<rsup|\<alpha\>>><around*|(|z<around*|(|t|)>|)>.
+    </equation*>
+  </lemma>
+
+  <\proof>
+    <\equation*>
+      <frac|d<with|math-font|cal|E>|dt>=<big|sum><rsub|\<alpha\>><frac|\<partial\><with|math-font|cal|E>|\<partial\>z<rsup|\<alpha\>>><around*|(|z<around*|(|t|)>|)><frac|dz<rsup|\<alpha\>>|dt><around*|(|t|)>=-<around*|\<\|\|\>|<frac|\<partial\><with|math-font|cal|E>|\<partial\>z<rsup|\<alpha\>>><around*|(|z<around*|(|t|)>|)>|\<\|\|\>><rsub|2><rsup|2>\<leqslant\>0.
+    </equation*>
+  </proof>
+
+  <\definition>
+    Given an arbitrary positive defined linear transformation <math|W> on
+    <math|\<bbb-R\><rsup|N>>, and an arbitrary function
+    <math|f\<in\>C<rsup|1><around*|(|\<bbb-R\><rsup|N>,\<bbb-R\><rsup|N>|)>>,
+    for <math|\<forall\>z\<in\>\<bbb-R\><rsup|N>>, define energy
+
+    <\equation*>
+      E<rsub|<around*|(|W,f|)>><around*|(|z|)>\<assign\><big|sum><rsub|\<alpha\>,\<beta\>>W<rsub|\<alpha\>\<beta\>>
+      f<rsup|\<alpha\>><around*|(|z|)> f<rsup|\<beta\>><around*|(|z|)>.
+    </equation*>
+  </definition>
+
+  <\lemma>
+    Energy <math|E<rsub|<around*|(|W,f|)>>> is lower bounded.
+  </lemma>
+
+  <\theorem>
+    Given the energy <math|E<rsub|<around*|(|W,f|)>>> on
+    <math|\<bbb-R\><rsup|N>>, for any trajectory
+    z<around*|(|t|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>,\<bbb-R\><rsup|N>|)>,
+    <math|E<rsub|<around*|(|W,f|)>><around*|(|z<around*|(|t|)>|)>> decreases
+    monotonically, converging to its lower bound, iff
+
+    <\equation*>
+      <frac|dz<rsup|\<gamma\>>|dt><around*|(|t|)>=-<big|sum><rsub|\<alpha\>,\<beta\>>W<rsub|\<alpha\>\<beta\>>
+      f<rsup|\<alpha\>><around*|(|z<around*|(|t|)>|)>
+      <frac|\<partial\>f<rsup|\<beta\>>|\<partial\>z<rsup|\<gamma\>>><around*|(|z<around*|(|t|)>|)>.
+    </equation*>
+  </theorem>
+
+  \;
+
+  \;
 </body>
 
 <initial|<\collection>
@@ -51,6 +105,7 @@
 <\references>
   <\collection>
     <associate|auto-1|<tuple|1|?>>
+    <associate|auto-2|<tuple|1|?>>
   </collection>
 </references>
 
