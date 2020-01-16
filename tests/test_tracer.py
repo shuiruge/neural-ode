@@ -5,7 +5,7 @@ https://github.com/kmkolasinski/deep-learning-notes/blob/master/seminars/2019-03
 
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from node.core import tracer
+from node.utils.trajectory import tracer
 from node.fix_grid import RKSolver
 
 
