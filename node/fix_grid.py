@@ -1,6 +1,6 @@
 import tensorflow as tf
 from node.base import ODESolver
-from node.core import nest_map
+from node.utils.nest import nest_map
 
 
 class FixGridODESolver(ODESolver):

@@ -1,6 +1,7 @@
 """Core algorithm implementations and utils."""
 
 import tensorflow as tf
+from node.utils.nest import nest_map
 
 
 def reverse_mode_derivative(ode_solver, network, variables):
@@ -138,22 +139,3 @@ def get_node_function(solver, t0, fn):
             return custom_gradient_fn(x)
 
     return node_fn
-
-
-def nest_map(fn, *args):  # TODO: add example.
-    r"""All args shall share the same nesting structure.
-
-    **ONLY SUPPORTS LIST NESTING.**
-    """
-    _check_same_structure(*args)
-
-    if not isinstance(args[0], list):
-        return fn(*args)
-
-    return [nest_map(fn, *subargs) for subargs in zip(*args)]
-
-
-def _check_same_structure(*args):
-    first_arg, *rest_args = args
-    for arg in rest_args:
-        tf.nest.assert_same_structure(first_arg, arg)
