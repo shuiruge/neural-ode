@@ -48,30 +48,34 @@
 
   <\lemma>
     Given an arbitrary lower bounded function
-    <math|<with|math-font|cal|E>\<in\>C<rsup|1><around*|(|\<bbb-R\><rsup|N>,\<bbb-R\>|)>>,
-    for any trajectory <math|z<around*|(|t|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>,\<bbb-R\><rsup|N>|)>>,
+    <math|<with|math-font|cal|E>\<in\>C<rsup|1><around*|(|\<bbb-R\><rsup|N>,\<bbb-R\>|)>>
+    and an arbitrary positive defined linear transformation <math|U> on
+    <math|\<bbb-R\><rsup|N>>, then for any trajectory
+    <math|z<around*|(|t|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>,\<bbb-R\><rsup|N>|)>>,
     <math|d<with|math-font|cal|E>/dt\<leqslant\>0> along
     <math|z<around*|(|t|)>> if
 
     <\equation*>
-      <frac|dz<rsup|\<alpha\>>|dt><around*|(|t|)>=-<frac|\<partial\><with|math-font|cal|E>|\<partial\>z<rsup|\<alpha\>>><around*|(|z<around*|(|t|)>|)>.
+      <frac|dz<rsup|\<alpha\>>|dt><around*|(|t|)>=-U<rsup|><rsup|\<alpha\>\<beta\>><frac|\<partial\><with|math-font|cal|E>|\<partial\>z<rsup|\<beta\>>><around*|(|z<around*|(|t|)>|)>.
     </equation*>
   </lemma>
 
   <\proof>
+    We have
+
     <\equation*>
-      <frac|d<with|math-font|cal|E>|dt>=<big|sum><rsub|\<alpha\>><frac|\<partial\><with|math-font|cal|E>|\<partial\>z<rsup|\<alpha\>>><around*|(|z<around*|(|t|)>|)><frac|dz<rsup|\<alpha\>>|dt><around*|(|t|)>=-<around*|\<\|\|\>|<frac|\<partial\><with|math-font|cal|E>|\<partial\>z<rsup|\<alpha\>>><around*|(|z<around*|(|t|)>|)>|\<\|\|\>><rsub|2><rsup|2>\<leqslant\>0.
+      <frac|d<with|math-font|cal|E>|dt>=<frac|\<partial\><with|math-font|cal|E>|\<partial\>z<rsup|\<alpha\>>><around*|(|z<around*|(|t|)>|)><frac|dz<rsup|\<alpha\>>|dt><around*|(|t|)>=-U<rsup|><rsup|\<alpha\>\<beta\>><frac|\<partial\><with|math-font|cal|E>|\<partial\>z<rsup|\<alpha\>>><around*|(|z<around*|(|t|)>|)><frac|\<partial\><with|math-font|cal|E>|\<partial\>z<rsup|\<beta\>>><around*|(|z<around*|(|t|)>|)>\<leqslant\>0.
     </equation*>
   </proof>
 
   <\definition>
-    Given an arbitrary positive defined linear transformation <math|W> on
+    Given a positive defined linear transformation <math|W> on
     <math|\<bbb-R\><rsup|N>>, and an arbitrary function
     <math|f\<in\>C<rsup|1><around*|(|\<bbb-R\><rsup|N>,\<bbb-R\><rsup|N>|)>>,
     for <math|\<forall\>z\<in\>\<bbb-R\><rsup|N>>, define energy
 
     <\equation*>
-      E<rsub|<around*|(|W,f|)>><around*|(|z|)>\<assign\><big|sum><rsub|\<alpha\>,\<beta\>>W<rsub|\<alpha\>\<beta\>>
+      E<rsub|<around*|(|W,f|)>><around*|(|z|)>\<assign\>W<rsub|\<alpha\>\<beta\>>
       f<rsup|\<alpha\>><around*|(|z|)> f<rsup|\<beta\>><around*|(|z|)>.
     </equation*>
   </definition>
@@ -81,20 +85,19 @@
   </lemma>
 
   <\theorem>
-    Given the energy <math|E<rsub|<around*|(|W,f|)>>> on
-    <math|\<bbb-R\><rsup|N>>, for any trajectory
+    Given an energy <math|E<rsub|<around*|(|W,f|)>>> on
+    <math|\<bbb-R\><rsup|N>> and a positive defined linear transformation
+    <math|U> on <math|\<bbb-R\><rsup|N>>, for any trajectory
     z<around*|(|t|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>,\<bbb-R\><rsup|N>|)>,
     <math|E<rsub|<around*|(|W,f|)>><around*|(|z<around*|(|t|)>|)>> decreases
-    monotonically, converging to its lower bound, iff
+    monotonically, converging to its lower bound, if
 
     <\equation*>
-      <frac|dz<rsup|\<gamma\>>|dt><around*|(|t|)>=-<big|sum><rsub|\<alpha\>,\<beta\>>W<rsub|\<alpha\>\<beta\>>
-      f<rsup|\<alpha\>><around*|(|z<around*|(|t|)>|)>
-      <frac|\<partial\>f<rsup|\<beta\>>|\<partial\>z<rsup|\<gamma\>>><around*|(|z<around*|(|t|)>|)>.
+      <frac|dz<rsup|\<alpha\>>|dt><around*|(|t|)>=-U<rsup|\<alpha\>\<beta\>>W<rsub|\<gamma\>\<delta\>>
+      f<rsup|\<gamma\>><around*|(|z<around*|(|t|)>|)>
+      <frac|\<partial\>f<rsup|\<delta\>>|\<partial\>z<rsup|\<beta\>>><around*|(|z<around*|(|t|)>|)>.
     </equation*>
   </theorem>
-
-  \;
 
   \;
 </body>
@@ -116,6 +119,10 @@
       <with|mode|<quote|math>|\<partial\>L/\<partial\>\<theta\>>
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-1>>
+
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|1<space|2spc>Energy
+      Based> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-2><vspace|0.5fn>
     </associate>
   </collection>
 </auxiliary>
