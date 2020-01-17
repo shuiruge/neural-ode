@@ -14,3 +14,4 @@ Neural ODE.
 - [ ] Adaptive time interval.
 - [ ] Add adaptive solvers.
 - [ ] Re-write ALBERT with NODE.
+- [ ] CNF.
