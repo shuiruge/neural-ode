@@ -18,6 +18,18 @@ def tracer(solver, fn):
 
     @tf.function
     def trace(t0, t1, dt, x):
+        """
+        Args:
+            t0: Time
+            t1: Time
+            dt: Time
+            x: tf.Tensor
+
+        Returns: tf.Tensor
+            If `x` has the shape `[batch_size] + event_shape`,
+            then the returned trajectory has the shape
+            `[batch_size, trajectory_length] + event_shape`.
+        """
         dt = tf.where(t1 > t0, dt, -dt)
         num_grids = int((t1 - t0) / dt + 1)
         ts = tf.linspace(t0, t1, num_grids)
@@ -31,8 +43,8 @@ def tracer(solver, fn):
             x = forward(t, t + dt, x)
             i += 1
             xs = xs.write(i, x)
-        trajectory = xs.stack()
-        return swapaxes(trajectory, 0, 1)  # swap batch <-> time axes.
+        trajectory = xs.stack()  # [B, T] + E
+        return swapaxes(trajectory, 0, 1)  # [T, B] + E
 
     return trace
 
