@@ -8,7 +8,7 @@ class Energy:
     """
     Args:
         linear_trans: Callable[[PhasePoint], PhasePoint]
-            Positive defined linear transformation. If `None`, use `identity`.
+            Positive defined linear transformation.
         static_field: PhaseVectorField
             Shall be static.
     """
@@ -43,6 +43,25 @@ def identity(x):
     Returns: PhasePoint
     """
     return nest_map(tf.identity, x)
+
+
+def rescale(factor):
+    """
+    Args:
+        factor: float
+    
+    Returns: Callable[[PhasePoint], PhasePoint]
+    """
+    factor = tf.convert_to_tensor(factor)
+    
+    def _rescale_fn(x):
+        return factor * x
+    
+    @tf.function
+    def rescale_fn(x):
+        return nest_map(_rescale_fn, x)
+
+    return rescale_fn
 
 
 def energy_based(linear_trans_1, linear_trans_2, static_field):
