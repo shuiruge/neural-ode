@@ -47,16 +47,19 @@ def identity(x):
 
 def rescale(factor):
     """
+    The `factor` shall be positive, for being postive defined.
+
     Args:
         factor: float
-    
+
     Returns: Callable[[PhasePoint], PhasePoint]
     """
+    assert factor > 0.
     factor = tf.convert_to_tensor(factor)
-    
+
     def _rescale_fn(x):
         return factor * x
-    
+
     @tf.function
     def rescale_fn(x):
         return nest_map(_rescale_fn, x)
@@ -75,7 +78,7 @@ def energy_based(linear_trans_1, linear_trans_2, static_field):
             Shall be static.
 
     Returns: PhaseVectorField
-        Static.
+        Static. The same signature as the `static_field`.
     """
 
     @tf.function
