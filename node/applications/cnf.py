@@ -1,12 +1,12 @@
 # TODO
 
 import tensorflow as tf
-from tensorflow_probability.bijectors import Bijector
+import tensorflow_probability as tfp
 from node.core import get_node_function
 from node.fix_grid import RKSolver
 
 
-class CNF(Bijector):
+class CNF(tfp.bijectors.Bijector):
 
     def __init__(self, t0, t1, solver=RKSolver(1e-1),
                  validate_args=False, name='cnf'):
