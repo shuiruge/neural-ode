@@ -22,7 +22,7 @@ class FixGridODESolver(ODESolver):
 
     def __init__(self, step_fn, diff_time, dtype=tf.float32):
         self.step_fn = step_fn
-        self.diff_time = tf.convert_to_tensor(diff_time)
+        self.diff_time = tf.convert_to_tensor(diff_time, dtype=dtype)
         self.dtype = dtype
 
     def __call__(self, phase_vector_field):

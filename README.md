@@ -10,8 +10,9 @@ Neural ODE.
 - [X] Visualization utils (How to visualize high dimensional trajectory).
 - [X] Generalizing the input type from `tf.Tensor` to `Sequence[tf.Tensor]`.
 - [X] Study the fix point for the trained stable NODE.
-- [ ] Convert to TF code style.
+- [X] Adaptive numeric precision in solver.
 - [ ] Adaptive time interval.
 - [ ] Add adaptive solvers.
 - [ ] Re-write ALBERT with NODE.
 - [ ] CNF.
+- [ ] Convert to TF code style.
