@@ -4,7 +4,31 @@ import tensorflow as tf
 from node.utils.nest import nest_map
 
 
-class Energy:
+class LowerBoundedFunction:
+
+    def __init__(self, check_lower_bound=False):
+        self.check_lower_bound = check_lower_bound
+
+    @tf.function
+    def __call__(self, *args, **kwargs):
+        scalar = self.call(*args, **kwargs)
+        if self.check_lower_bound:
+            infimum = tf.convert_to_tensor(self.infimum)
+            tf.debugging.assert_greater_equal(scalar, infimum)
+        return scalar
+
+    @property
+    def infimum(self):
+        """Scalar-like"""
+        return NotImplemented
+
+    def call(self, *args, **kwargs):
+        """Inputs `tf.Tensor` or nested `tf.Tensor`s (as the `*args`),
+        and returns a scalar `tf.Tensor`."""
+        return NotImplemented
+
+
+class Energy(LowerBoundedFunction):
     """
     Args:
         linear_trans: Callable[[PhasePoint], PhasePoint]
@@ -13,12 +37,19 @@ class Energy:
             Shall be static.
     """
 
-    def __init__(self, linear_trans, static_field):
+    def __init__(self, linear_trans, static_field, **kwargs):
+        super().__init__(**kwargs)
+
         self.linear_trans = linear_trans
         self.static_field = static_field
 
+    @property
+    def infimum(self):
+        """Scalar-like"""
+        return 0.
+
     @tf.function
-    def __call__(self, x):
+    def call(self, x):
         """
         Args:
             x: PhasePoint
@@ -67,27 +98,34 @@ def rescale(factor):
     return rescale_fn
 
 
-def energy_based(linear_trans_1, linear_trans_2, static_field):
-    """
+def energy_based(linear_transform, lower_bounded_fn):
+    r"""Returns a static phase vector field defined by
+
+    ```
+    \begin{equation}
+        \frac{dx^{\alpha}}{dt} (t) = - U^{\alpha \beta}
+                                       \frac{\partial E}{\partial x^\beta}
+                                       \left( z(t) \right),
+    \end{equation}
+
+    where $U$ is a positive defined linear transformation, and $E$ a lower
+    bounded function.
+    ```
+
     Args:
-        linear_trans_1: Callable[[PhasePoint], PhasePoint]
+        linear_trans: Callable[[PhasePoint], PhasePoint]
             Positive defined linear transformation. The $U$ transform.
-        linear_trans_2: Callable[[PhasePoint], PhasePoint]
-            Positive defined linear transformation. The $W$ transform.
-        static_field: PhaseVectorField
-            Shall be static.
+        lower_bounded_fn: LowerBoundedFunction
 
     Returns: PhaseVectorField
-        Static. The same signature as the `static_field`.
     """
 
     @tf.function
-    def energy_based_static_field(_, x):
+    def static_field(_, x):
         with tf.GradientTape() as g:
             g.watch(x)
-            f = static_field(_, x)
-        vjp = g.gradient(f, x, linear_trans_2(f),
-                         unconnected_gradients='zero')
-        return -linear_trans_1(vjp)
+            e = lower_bounded_fn(x)
+        grad = g.gradient(e, x, unconnected_gradients='zero')
+        return -linear_transform(grad)
 
-    return energy_based_static_field
+    return static_field
