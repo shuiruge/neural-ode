@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from matplotlib import animation
@@ -49,15 +50,27 @@ def tracer(solver, fn):
     return trace
 
 
-def visualize_trajectory(trajectory):
+def visualize_trajectory(trajectory, normalize=False):
     """Visualizes trajectory by imshow animation.
 
     Args:
         trajectory: numpy.array
             Shape `[num_frames, num_x_pixals, num_y_pixals]`.
+        normalize: bool
+            If true, the trajectory is normalized for each frame.
 
     Returns: animation.FuncAnimation
     """
+
+    def normalize_fn(frame):
+        if np.std(frame) == 0:
+            return frame
+        frame = (frame - np.min(frame)) / (np.max(frame) - np.min(frame))
+        return frame
+
+    if normalize:
+        trajectory = [normalize_fn(_) for _ in trajectory]
+
     fig = plt.figure()
     ax = plt.axes()
     img = ax.imshow(trajectory[0], cmap='gray')
