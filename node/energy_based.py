@@ -11,11 +11,11 @@ class LowerBoundedFunction:
 
     @tf.function
     def __call__(self, *args, **kwargs):
-        scalar = self.call(*args, **kwargs)
+        y = self.call(*args, **kwargs)  # returns scalar.
         if self.check_lower_bound:
             infimum = tf.convert_to_tensor(self.infimum)
-            tf.debugging.assert_greater_equal(scalar, infimum)
-        return scalar
+            tf.debugging.assert_greater_equal(y, infimum)
+        return y
 
     @property
     def infimum(self):
@@ -57,12 +57,13 @@ class Energy(LowerBoundedFunction):
         Returns: tf.Tensor
             Shape `[batch_size]`. The energy per sample.
         """
-        f = self.static_field(tf.constant(0.), x)  # the `t`-arg is arbitrary.
+        arbitrary_time = tf.convert_to_tensor(0.)
+        y = self.static_field(arbitrary_time, x)
 
         rank = len(x.shape)
         sum_axes = list(range(1, rank))  # excludes the batch-axis.
 
-        return 0.5 * tf.reduce_sum(self.linear_trans(f) * f, sum_axes)
+        return 0.5 * tf.reduce_sum(self.linear_trans(y) * y, sum_axes)
 
 
 def identity(x):
