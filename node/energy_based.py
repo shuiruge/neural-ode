@@ -66,6 +66,7 @@ class Energy(LowerBoundedFunction):
         return 0.5 * tf.reduce_sum(self.linear_trans(y) * y, sum_axes)
 
 
+@nest_map
 def identity(x):
     """The identity linear transform.
 
@@ -74,7 +75,7 @@ def identity(x):
 
     Returns: PhasePoint
     """
-    return nest_map(tf.identity, x)
+    return x
 
 
 def rescale(factor):
@@ -89,12 +90,10 @@ def rescale(factor):
     assert factor > 0.
     factor = tf.convert_to_tensor(factor)
 
-    def _rescale_fn(x):
-        return factor * x
-
     @tf.function
+    @nest_map
     def rescale_fn(x):
-        return nest_map(_rescale_fn, x)
+        return factor * x
 
     return rescale_fn
 

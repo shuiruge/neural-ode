@@ -36,7 +36,7 @@ def reverse_mode_derivative(ode_solver, network, variables):
     @tf.function
     def aug_dynamics(time, aug_phase_point):
         state, adjoint, *_ = aug_phase_point
-        neg_adjoint = nest_map(lambda x: -1 * x, adjoint)
+        neg_adjoint = _negate(adjoint)
 
         with tf.GradientTape() as g:
             g.watch(state)
@@ -67,6 +67,11 @@ def reverse_mode_derivative(ode_solver, network, variables):
         return init_state, init_loss_gradient, list(grad_loss_by_vars)
 
     return backward
+
+
+@nest_map
+def _negate(x):
+    return -1 * x
 
 
 def get_node_function(solver, t0, fn):

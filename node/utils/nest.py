@@ -1,7 +1,20 @@
 import tensorflow as tf
 
 
-def nest_map(fn, *args):  # TODO: add example.
+def nest_map(fn):  # TODO: add example.
+    r"""Decorator converting `fn` to a nest map."""
+
+    def nest_fn(*args):
+        r"""All args shall share the same nesting structure.
+
+        **ONLY SUPPORTS LIST NESTING.**
+        """
+        return _nest_map_recur(fn, *args)
+
+    return nest_fn
+
+
+def _nest_map_recur(fn, *args):
     r"""All args shall share the same nesting structure.
 
     **ONLY SUPPORTS LIST NESTING.**
@@ -11,7 +24,7 @@ def nest_map(fn, *args):  # TODO: add example.
     if not isinstance(args[0], list):
         return fn(*args)
 
-    return [nest_map(fn, *subargs) for subargs in zip(*args)]
+    return [_nest_map_recur(fn, *subargs) for subargs in zip(*args)]
 
 
 def _check_same_structure(*args):

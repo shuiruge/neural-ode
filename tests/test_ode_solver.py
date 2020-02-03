@@ -17,7 +17,9 @@ def f(t, x):
 
 x0 = tf.constant([1., 1.])
 forward = solver(f)
-x1 = forward(0., 1., x0)
+t0 = tf.constant(0.)
+t1 = tf.constant(1.)
+x1 = forward(t0, t1, x0)
 print(x1)
 
 
@@ -32,5 +34,7 @@ def f(t, x):
 
 x0 = tf.constant([1.])
 forward = solver(f)
-x1 = forward(0., 1., x0)
+t0 = tf.constant(0.)
+t1 = tf.constant(1.)
+x1 = forward(t0, t1, x0)
 print(x1)
