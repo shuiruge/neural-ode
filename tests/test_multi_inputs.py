@@ -10,7 +10,7 @@ solver = RKSolver(0.1)
 dense = tf.keras.layers.Dense(2)
 
 
-@node_wrapper(solver, 0.)
+@node_wrapper(solver, tf.constant(0.))
 @tf.function
 def f(t, x):
     x0, x1 = tf.unstack(x[0], axis=-1)
@@ -21,5 +21,5 @@ def f(t, x):
 
 with tf.GradientTape() as g:
     g.watch(x1)
-    y = f(1., [x1, x2])
+    y = f(tf.constant(1.), [x1, x2])
 print(g.gradient(y, x1))

@@ -60,9 +60,9 @@ def reverse_mode_derivative(ode_solver, network, variables):
         for var in variables:
             zeros = tf.zeros_like(var)
             final_phase_point.append(zeros)
-        ode_final_value = forward(start_time=end_time,
-                                  end_time=start_time,
-                                  initial_phase_point=final_phase_point)
+        ode_final_value = forward(end_time,
+                                  start_time,
+                                  final_phase_point)
         init_state, init_loss_gradient, *grad_loss_by_vars = ode_final_value
         return init_state, init_loss_gradient, list(grad_loss_by_vars)
 

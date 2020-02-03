@@ -81,13 +81,13 @@ def euler_step_fn(f):
 
     @tf.function
     def step_forward(t, dt, x):
-        dx = dt * f(t, x)
+        k1 = f(t, x)
 
         @nest_map
-        def g(x, dx):
-            return x + dx
+        def g(x, k1):
+            return x + dt * k1
 
-        return g(x, dx)
+        return g(x, k1)
 
     return step_forward
 
@@ -96,24 +96,24 @@ def rk4_step_fn(f):
 
     @tf.function
     def step_forward(t, dt, x):
-        k1 = dt * f(t, x)
+        k1 = f(t, x)
 
         @nest_map
         def g(x, k1):
-            return x + k1 / 2
+            return x + dt * k1 / 2
 
-        k2 = dt * f(t + dt / 2, g(x, k1))
-        k3 = dt * f(t + dt / 2, g(x, k2))
+        k2 = f(t + dt / 2, g(x, k1))
+        k3 = f(t + dt / 2, g(x, k2))
 
         @nest_map
         def h(x, k3):
-            return x + k3
+            return x + dt * k3
 
-        k4 = dt * f(t + dt, h(x, k3))
+        k4 = f(t + dt, h(x, k3))
 
         @nest_map
         def k(x, k1, k2, k3, k4):
-            return x + (k1 + 2 * k2 + 2 * k3 + k4) / 6
+            return x + dt * (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
         return k(x, k1, k2, k3, k4)
 
