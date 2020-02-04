@@ -3,6 +3,7 @@ References:
 1. https://github.com/kmkolasinski/deep-learning-notes/blob/master/seminars/2019-03-Neural-Ordinary-Differential-Equations/cnf.py  # noqa:E501
 """
 
+import tensorflow as tf
 from node.applications.cnf.base import CNF
 
 

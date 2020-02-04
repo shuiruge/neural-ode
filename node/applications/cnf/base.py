@@ -3,12 +3,12 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
 from node.core import get_node_function
-from node.fix_grid import RKSolver
+from node.solvers import RK4Solver
 
 
 class CNF(tfp.bijectors.Bijector):
 
-    def __init__(self, t0, t1, solver=RKSolver(1e-1),
+    def __init__(self, t0, t1, solver=RK4Solver(1e-1),
                  validate_args=False, name='cnf'):
         super().__init__(forward_min_event_ndims=1,
                          validate_args=validate_args,

@@ -1,12 +1,12 @@
 import tensorflow as tf
 from node.wrapper import node_wrapper
-from node.fix_grid import RKSolver
+from node.solvers import RK4Solver
 
 
 x = tf.constant([[2., 0]])
 # x = tf.constant([[-0.1, 2.0], [-2.0, -0.1]])
 
-solver = RKSolver(0.1)
+solver = RK4Solver(0.1)
 dense = tf.keras.layers.Dense(2)
 
 

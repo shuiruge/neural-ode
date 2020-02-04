@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework.errors_impl import NotFoundError
 from node.core import get_node_function
-from node.fix_grid import RKSolver
+from node.solvers import RK4Solver
 from node.utils.initializers import GlorotUniform
 
 
@@ -25,7 +25,7 @@ class MyLayer(tf.keras.layers.Layer):
         super().__init__(**kwargs)
         self.filters = filters
         self.kernel_size = kernel_size
-        self.solver = RKSolver(0.1, dtype=tf.float32)
+        self.solver = RK4Solver(0.1, dtype=tf.float32)
         self.t = tf.convert_to_tensor(t)
 
         self.convolve = tf.keras.layers.Conv2D(

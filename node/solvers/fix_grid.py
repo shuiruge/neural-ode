@@ -71,25 +71,10 @@ def _cast(dtype):
     return cast_fn
 
 
-class RKSolver(FixGridODESolver):
+class RK4Solver(FixGridODESolver):
 
     def __init__(self, dt, **kwargs):
         super().__init__(rk4_step_fn, dt, **kwargs)
-
-
-def euler_step_fn(f):
-
-    @tf.function
-    def step_forward(t, dt, x):
-        k1 = f(t, x)
-
-        @nest_map
-        def g(x, k1):
-            return x + dt * k1
-
-        return g(x, k1)
-
-    return step_forward
 
 
 def rk4_step_fn(f):

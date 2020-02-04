@@ -13,7 +13,7 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from node.core import get_node_function
-from node.fix_grid import RKSolver
+from node.solvers import RK4Solver
 from node.utils.trajectory import tracer
 
 
@@ -36,7 +36,7 @@ t1 = tf.constant(25.)
 dt = (t1 - t0) / (data_size - 1)
 true_y0 = tf.constant(true_y0)
 
-traj_forward = tracer(RKSolver(1e-2), f)
+traj_forward = tracer(RK4Solver(1e-2), f)
 true_y = traj_forward(t0, t1, dt, true_y0)
 true_y = true_y.numpy().reshape([data_size, 2])
 ts = tf.linspace(t0, t1, data_size).numpy()
@@ -60,7 +60,7 @@ def network(t, x):
     return model(h)
 
 
-node_network = get_node_function(RKSolver(dt), t0, network)
+node_network = get_node_function(RK4Solver(dt), t0, network)
 
 
 def get_batch():

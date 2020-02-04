@@ -8,7 +8,7 @@ import numpy as np
 import tensorflow as tf
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from node.fix_grid import (
+from node.solvers import (
     FixGridODESolver, FixGridODESolverWithTrajectory, rk4_step_fn)
 from node.core import reverse_mode_derivative
 

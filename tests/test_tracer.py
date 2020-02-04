@@ -6,7 +6,7 @@ https://github.com/kmkolasinski/deep-learning-notes/blob/master/seminars/2019-03
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from node.utils.trajectory import tracer
-from node.fix_grid import RKSolver
+from node.solvers import RK4Solver
 
 
 data_size = 1000
@@ -26,7 +26,7 @@ t1 = tf.constant(25.)
 dt = (t1 - t0) / data_size
 true_y0 = tf.constant(true_y0)
 
-trace = tracer(RKSolver(dt * 0.2), f)
+trace = tracer(RK4Solver(dt * 0.2), f)
 trajectory = trace(t0, t1, dt, true_y0)
 trajectory = trajectory.numpy().reshape([-1, 2])
 

@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 from node.core import get_node_function
-from node.fix_grid import RKSolver
+from node.solvers import RK4Solver
 from node.utils.trajectory import tracer
 from node.energy_based import Energy, energy_based, identity
 
@@ -35,7 +35,7 @@ class MyLayer(tf.keras.layers.Layer):
         self._raw_pvf = lambda _, x: self._model(x)
         self._energy = Energy(identity, self._raw_pvf)
         self._pvf = energy_based(identity, self._energy)
-        self._node_fn = get_node_function(RKSolver(self.dt, dtype=DTYPE),
+        self._node_fn = get_node_function(RK4Solver(self.dt, dtype=DTYPE),
                                           tf.constant(0., dtype=DTYPE),
                                           self._pvf)
 
@@ -79,7 +79,7 @@ model.fit(x_train, y_train, epochs=12, batch_size=128)
 
 my_layer_id = 1
 my_layer = model.layers[my_layer_id]
-trace = tracer(RKSolver(0.1), my_layer._pvf)
+trace = tracer(RK4Solver(0.1), my_layer._pvf)
 energy = Energy(identity, my_layer._model)
 truncated_model = tf.keras.Sequential(model.layers[:my_layer_id])
 

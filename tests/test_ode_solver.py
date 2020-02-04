@@ -1,7 +1,7 @@
 import tensorflow as tf
-from node.fix_grid import RKSolver
+from node.solvers import RK4Solver
 
-solver = RKSolver(0.01)
+solver = RK4Solver(0.01)
 
 
 # Example 1

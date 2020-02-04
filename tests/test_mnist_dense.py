@@ -40,7 +40,7 @@ madly!
 import numpy as np
 import tensorflow as tf
 from node.core import get_node_function
-from node.fix_grid import RKSolver
+from node.solvers import RK4Solver
 from node.utils.initializers import GlorotUniform
 
 
@@ -83,7 +83,7 @@ class MyLayer(tf.keras.layers.Layer):
             return g.gradient(r, x, z)
 
         self._node_fn = get_node_function(
-            RKSolver(self.dt), tf.constant(0.), fn)
+            RK4Solver(self.dt), tf.constant(0.), fn)
 
     def call(self, x):
         y = self._node_fn(self.tN, x)
