@@ -9,7 +9,7 @@ def nest_map(fn):  # TODO: add example.
 
         **ONLY SUPPORTS LIST NESTING.**
         """
-        return _nest_map_recur(fn, *args)
+        return tf.nest.map_structure(fn, *args)
 
     return nest_fn
 
