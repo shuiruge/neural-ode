@@ -13,18 +13,18 @@ dense = tf.keras.layers.Dense(2)
 @node_wrapper(solver, tf.constant(0.))
 @tf.function
 def f(t, x):
-    x0, x1 = tf.unstack(x[0], axis=-1)
-    y0 = x0 + 2 * x1
-    y1 = -3 * x0 + x1
-    return [dense(tf.stack([y0, y1], axis=-1)), tf.zeros_like(x[1])]
+  x0, x1 = tf.unstack(x[0], axis=-1)
+  y0 = x0 + 2 * x1
+  y1 = -3 * x0 + x1
+  return [dense(tf.stack([y0, y1], axis=-1)), tf.zeros_like(x[1])]
 
 
 with tf.GradientTape() as g:
-    g.watch(x1)
-    y = f(tf.constant(1.), [x1, x2])
+  g.watch(x1)
+  y = f(tf.constant(1.), [x1, x2])
 print(g.gradient(y, x1))
 
 with tf.GradientTape() as g:
-    g.watch(x2)
-    y = f(tf.constant(1.), [x1, x2])
+  g.watch(x2)
+  y = f(tf.constant(1.), [x1, x2])
 print(g.gradient(y, x2))

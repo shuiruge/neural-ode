@@ -3,7 +3,6 @@ import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 from node.core import get_node_function
 from node.solvers import RK4Solver
-from node.utils.trajectory import tracer
 from node.hopfield import hopfield, identity
 
 
@@ -18,45 +17,38 @@ tf.keras.backend.set_floatx(DTYPE)
 
 class MyLayer(tf.keras.layers.Layer):
 
-    def __init__(self, units, dt, num_grids, **kwargs):
-        super().__init__(**kwargs)
-        self.dt = dt
-        self.num_grids = num_grids
+  def __init__(self, units, dt, num_grids, **kwargs):
+    super().__init__(**kwargs)
+    self.dt = dt
+    self.num_grids = num_grids
 
-        t0 = tf.constant(0., dtype=DTYPE)
-        self.tN = t0 + num_grids * dt
+    t0 = tf.constant(0., dtype=DTYPE)
+    self.tN = t0 + num_grids * dt
 
-        # self._model = tf.keras.Sequential([
-        #     tf.keras.layers.Dense(1024, activation='relu', dtype=DTYPE),
-        #     tf.keras.layers.Dense(1, activation='sigmoid', dtype=DTYPE),
-        # ])
-        # self._model.build([None, units])
-        # self._pvf = hopfield(identity, self._model)
+    self._model = tf.keras.Sequential([
+        tf.keras.layers.Dense(1024, activation='relu', dtype=DTYPE),
+        tf.keras.layers.Dense(1, activation='sigmoid', dtype=DTYPE),
+    ])
+    self._model.build([None, units])
+    self._pvf = hopfield(identity, self._model)
 
-        self._model = tf.keras.Sequential([
-            tf.keras.layers.Dense(1024, activation='relu', dtype=DTYPE),
-            tf.keras.layers.Dense(units, dtype=DTYPE),
-        ])
-        self._model.build([None, units])
-        self._pvf = lambda _, x: self._model(x)
+    self._node_fn = get_node_function(RK4Solver(self.dt, dtype=DTYPE),
+                                      tf.constant(0., dtype=DTYPE),
+                                      self._pvf)
 
-        self._node_fn = get_node_function(RK4Solver(self.dt, dtype=DTYPE),
-                                          tf.constant(0., dtype=DTYPE),
-                                          self._pvf)
+  def call(self, x):
+    y = self._node_fn(self.tN, x)
+    return y
 
-    def call(self, x):
-        y = self._node_fn(self.tN, x)
-        return y
-
-    def get_config(self):
-        return super().get_config().copy()
+  def get_config(self):
+    return super().get_config().copy()
 
 
 def process(X, y):
-    X = X / 255.
-    X = np.reshape(X, [-1, 28 * 28])
-    y = np.eye(10)[y]
-    return X.astype(DTYPE), y.astype(DTYPE)
+  X = X / 255.
+  X = np.reshape(X, [-1, 28 * 28])
+  y = np.eye(10)[y]
+  return X.astype(DTYPE), y.astype(DTYPE)
 
 
 mnist = tf.keras.datasets.mnist
@@ -81,19 +73,3 @@ model.compile(loss='categorical_crossentropy',
               metrics=['accuracy'])
 
 model.fit(x_train, y_train, epochs=12, batch_size=128)
-
-# my_layer_id = 1
-# my_layer = model.layers[my_layer_id]
-# trace = tracer(RK4Solver(0.1), my_layer._pvf)
-# energy = Energy(identity, my_layer._model)
-# truncated_model = tf.keras.Sequential(model.layers[:my_layer_id])
-
-# hidden = truncated_model(x_train[:100])
-# labels = y_train[:100]
-# trajectory = trace(t0=tf.constant(0.),
-#                    t1=tf.constant(5.),
-#                    dt=tf.constant(0.1),
-#                    x=hidden)
-# mean, variance = tf.nn.moments(trajectory, axes=[-1])
-# tf.print('trajectory[0]\n', trajectory[0], '\n')
-# tf.print('variance[0]\n', variance[0], '\n')

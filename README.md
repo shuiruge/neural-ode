@@ -11,8 +11,8 @@ Neural ODE.
 - [X] Generalizing the input type from `tf.Tensor` to `Sequence[tf.Tensor]`.
 - [X] Study the fix point for the trained stable NODE.
 - [X] Adaptive numeric precision in solver.
+- [X] CNF.
+- [X] Convert to TF code style.
 - [ ] Adaptive time interval.
 - [ ] Add adaptive solvers.
 - [ ] Re-write ALBERT with NODE.
-- [ ] CNF.
-- [ ] Convert to TF code style.
