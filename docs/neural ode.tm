@@ -44,62 +44,115 @@
   By <math|z<rsub|i+1><around*|(|t|)>=z<rsub|i><around*|(|t|)>+\<epsilon\>f<around*|(|z<rsub|i><around*|(|t|)>,t;\<theta\>|)>>,
   <math|\<partial\>z<rsub|i>/\<partial\>\<theta\>=\<epsilon\>\<partial\>f<around*|(|z<rsub|i>,t;\<theta\>|)>/\<partial\>\<theta\>>
 
-  <section|Energy Based>
+  <section|Continuum of Hopfield>
 
-  <\lemma>
-    Given an arbitrary lower bounded function
-    <math|<with|math-font|cal|E>\<in\>C<rsup|1><around*|(|\<bbb-R\><rsup|N>,\<bbb-R\>|)>>
+  <subsection|Hopfield Network>
+
+  Consider Hopfield network. Let <math|x<around*|(|t|)>\<in\><around*|{|-1,+1|}><rsup|N>>
+  denotes the state of the network at descrete time <math|t=0,1,\<ldots\>>;
+  and <math|W> a matrix on <math|\<bbb-R\><rsup|N>>, essentially ensuring
+  <math|W<rsub|\<alpha\> \<beta\>>=W<rsub|\<beta\> \<alpha\>>> and
+  <math|W<rsub|\<alpha\> \<alpha\>>=0>. Define energy
+  <math|E<rsub|W><around*|(|x<around*|(|t|)>|)>\<assign\>-W<rsub|\<alpha\>\<beta\>>
+  x<rsup|\<alpha\>><around*|(|t|)> x<rsup|\<beta\>><around*|(|t|)>>.
+
+  <\theorem>
+    Along dynamics <math|x<rsub|\<alpha\>><around*|(|t+1|)>=sign<around*|[|W<rsub|\<alpha\>
+    \<beta\>> x<rsup|\<beta\>><around*|(|t|)>|]>>,
+    <math|E<rsub|W><around*|(|x<around*|(|t+1|)>|)>-E<rsub|W><around*|(|x<around*|(|t|)>|)>\<leqslant\>0>.
+  </theorem>
+
+  <\proof>
+    Consider the async-updation of Hopfield network. Let's change the
+    component at dimension <math|<wide|\<alpha\>|^>>, i.e.
+    <math|x<rprime|'><rsub|<wide|\<alpha\>|^>>=sign<around*|[|W<rsub|<wide|\<alpha\>|^>
+    \<beta\>> x<rsup|\<beta\>>|]>>, then
+
+    <\align>
+      <tformat|<table|<row|<cell|E<rsub|W><around*|(|x<rprime|'>|)>-E<rsub|W><around*|(|x|)>=>|<cell|-W<rsub|\<alpha\>\<beta\>>
+      x<rprime|'><rsup|\<alpha\>>x<rprime|'><rsup|\<beta\>>+W<rsub|\<alpha\>\<beta\>>
+      x<rsup|\<alpha\>>x<rsup|\<beta\>>>>|<row|<cell|=>|<cell|-2
+      <around*|(|x<rprime|'><rsup|<wide|\<alpha\>|^>>-x<rsup|<wide|\<alpha\>|^>>|)>
+      W<rsub|<wide|\<alpha\>|^> \<beta\>> x<rsup|\<beta\>>,>>>>
+    </align>
+
+    which employs conditions <math|W<rsub|\<alpha\> \<beta\>>=W<rsub|\<beta\>
+    \<alpha\>>> and <math|W<rsub|\<alpha\> \<alpha\>>=0>. Next, we prove
+    that, combining with <math|x<rprime|'><rsub|<wide|\<alpha\>|^>>=sign<around*|[|W<rsub|<wide|\<alpha\>|^>
+    \<beta\>> x<rsup|\<beta\>>|]>>, this implies
+    <math|E<rsub|W><around*|(|x<rprime|'>|)>-E<rsub|W><around*|(|x|)>\<leqslant\>0>.
+
+    If <math|<around*|(|x<rprime|'><rsup|<wide|\<alpha\>|^>>-x<rsup|<wide|\<alpha\>|^>>|)>\<gtr\>0>,
+    then <math|x<rprime|'><rsup|<wide|\<alpha\>|^>>=1> and
+    <math|x<rsup|<wide|\<alpha\>|^>>=-1>. Since
+    <math|x<rprime|'><rsub|<wide|\<alpha\>|^>>=sign<around*|[|W<rsub|<wide|\<alpha\>|^>
+    \<beta\>> x<rsup|\<beta\>>|]>>, <math|W<rsub|<wide|\<alpha\>|^> \<beta\>>
+    x<rsup|\<beta\>>\<gtr\>0>. Then <math|E<rsub|W><around*|(|x<rprime|'>|)>-E<rsub|W><around*|(|x|)>\<less\>0>.
+    Contrarily, if <math|<around*|(|x<rprime|'><rsup|<wide|\<alpha\>|^>>-x<rsup|<wide|\<alpha\>|^>>|)>\<less\>0>,
+    then <math|x<rprime|'><rsup|<wide|\<alpha\>|^>>=-1> and
+    <math|x<rsup|<wide|\<alpha\>|^>>=1>, implying
+    <math|W<rsub|<wide|\<alpha\>|^> \<beta\>> x<rsup|\<beta\>>\<less\>0>.
+    Also <math|E<rsub|W><around*|(|x<rprime|'>|)>-E<rsub|W><around*|(|x|)>\<less\>0>.
+    Otherwise, <math|E<rsub|W><around*|(|x<rprime|'>|)>-E<rsub|W><around*|(|x|)>=0>.
+    So, we conclude <math|E<rsub|W><around*|(|x<rprime|'>|)>-E<rsub|W><around*|(|x|)>\<leqslant\>0>.
+  </proof>
+
+  Since the states of the network are finite, the <math|E<rsub|W>> is lower
+  bounded. Thus the network converges (relaxes) at finite <math|t>.
+
+  <subsection|Continuum>
+
+  Let's consider applying the convergence of Hopfield network to neural ODE
+  for generic network architecture. This makes the descrete time <math|t> a
+  continuum.
+
+  <\theorem>
+    Given any function <math|<with|math-font|cal|E>\<in\>C<rsup|1><around*|(|\<bbb-R\><rsup|N>,\<bbb-R\>|)>>
     and an arbitrary positive defined linear transformation <math|U> on
-    <math|\<bbb-R\><rsup|N>>, then for any trajectory
-    <math|z<around*|(|t|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>,\<bbb-R\><rsup|N>|)>>,
-    <math|d<with|math-font|cal|E>/dt\<leqslant\>0> along
-    <math|z<around*|(|t|)>> if
+    <math|\<bbb-R\><rsup|N>>. Let <math|x<around*|(|t|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>,\<bbb-R\><rsup|N>|)>>
+    denote trajectory. Then, <math|d<with|math-font|cal|E>/dt\<leqslant\>0>
+    along <math|x<around*|(|t|)>> if
 
     <\equation*>
-      <frac|dz<rsup|\<alpha\>>|dt><around*|(|t|)>=-U<rsup|><rsup|\<alpha\>\<beta\>><frac|\<partial\><with|math-font|cal|E>|\<partial\>z<rsup|\<beta\>>><around*|(|z<around*|(|t|)>|)>.
+      <frac|d x<rsup|\<alpha\>>|d t><around*|(|t|)>=-U<rsup|><rsup|\<alpha\>\<beta\>><frac|\<partial\><with|math-font|cal|E>|\<partial\>x<rsup|\<beta\>>><around*|(|x<around*|(|t|)>|)>.
     </equation*>
-  </lemma>
+  </theorem>
 
   <\proof>
     We have
 
     <\equation*>
-      <frac|d<with|math-font|cal|E>|dt>=<frac|\<partial\><with|math-font|cal|E>|\<partial\>z<rsup|\<alpha\>>><around*|(|z<around*|(|t|)>|)><frac|dz<rsup|\<alpha\>>|dt><around*|(|t|)>=-U<rsup|><rsup|\<alpha\>\<beta\>><frac|\<partial\><with|math-font|cal|E>|\<partial\>z<rsup|\<alpha\>>><around*|(|z<around*|(|t|)>|)><frac|\<partial\><with|math-font|cal|E>|\<partial\>z<rsup|\<beta\>>><around*|(|z<around*|(|t|)>|)>\<leqslant\>0.
+      <frac|d<with|math-font|cal|E>|d t><around*|(|t|)>=<frac|\<partial\><with|math-font|cal|E>|\<partial\>x<rsup|\<alpha\>>><around*|(|x<around*|(|t|)>|)><frac|d
+      x<rsup|\<alpha\>>|d t><around*|(|t|)>=-U<rsup|><rsup|\<alpha\>\<beta\>><frac|\<partial\><with|math-font|cal|E>|\<partial\>x<rsup|\<alpha\>>><around*|(|x<around*|(|t|)>|)><frac|\<partial\><with|math-font|cal|E>|\<partial\>x<rsup|\<beta\>>><around*|(|x<around*|(|t|)>|)>\<leqslant\>0.
     </equation*>
   </proof>
 
-  <\definition>
-    Given a positive defined linear transformation <math|W> on
-    <math|\<bbb-R\><rsup|N>>, and an arbitrary function
-    <math|f\<in\>C<rsup|1><around*|(|\<bbb-R\><rsup|N>,\<bbb-R\><rsup|N>|)>>,
-    for <math|\<forall\>z\<in\>\<bbb-R\><rsup|N>>, define energy
+  Further, if the function <math|<with|math-font|cal|E>> is lower bounded,
+  then the trajectory converges (relaxes) at finite <math|t>.
 
-    <\equation*>
-      E<rsub|<around*|(|W,f|)>><around*|(|z|)>\<assign\>W<rsub|\<alpha\>\<beta\>>
-      f<rsup|\<alpha\>><around*|(|z|)> f<rsup|\<beta\>><around*|(|z|)>.
-    </equation*>
-  </definition>
+  This is the continuum analogy to the convergence of Hopfield network.
+  Indeed, let <math|U> the identity, and <math|<with|math-font|cal|E><around*|(|x|)>=-W<rsub|\<alpha\>
+  \<beta\>> x<rsup|\<alpha\>> x<rsup|\<beta\>>> with <math|W<rsub|\<alpha\>
+  \<beta\>>=W<rsub|\<beta\> \<alpha\>>>, then dynamics becomes
 
-  <\lemma>
-    Energy <math|E<rsub|<around*|(|W,f|)>>> is lower bounded.
-  </lemma>
+  <\equation*>
+    <frac|d x<rsub|\<alpha\>>|d t><around*|(|t|)>=-<frac|\<partial\><with|math-font|cal|E>|\<partial\>x<rsup|\<alpha\>>><around*|(|x<around*|(|t|)>|)>=-2
+    W<rsub|\<alpha\> \<beta\>> x<rsup|\<beta\>><around*|(|t|)>,
+  </equation*>
 
-  <\theorem>
-    Given an energy <math|E<rsub|<around*|(|W,f|)>>> on
-    <math|\<bbb-R\><rsup|N>> and a positive defined linear transformation
-    <math|U> on <math|\<bbb-R\><rsup|N>>, for any trajectory
-    z<around*|(|t|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>,\<bbb-R\><rsup|N>|)>,
-    <math|E<rsub|<around*|(|W,f|)>><around*|(|z<around*|(|t|)>|)>> decreases
-    monotonically, converging to its lower bound, if
+  which makes
 
-    <\equation*>
-      <frac|dz<rsup|\<alpha\>>|dt><around*|(|t|)>=-U<rsup|\<alpha\>\<beta\>>W<rsub|\<gamma\>\<delta\>>
-      f<rsup|\<gamma\>><around*|(|z<around*|(|t|)>|)>
-      <frac|\<partial\>f<rsup|\<delta\>>|\<partial\>z<rsup|\<beta\>>><around*|(|z<around*|(|t|)>|)>.
-    </equation*>
-  </theorem>
+  <\equation*>
+    <frac|d<with|math-font|cal|E>|d t><around*|(|t|)>=-2<frac|d
+    x<rsup|\<alpha\>>|d t><around*|(|t|)> W<rsub|\<alpha\> \<beta\>>
+    x<rsup|\<beta\>><around*|(|t|)>.
+  </equation*>
 
-  \;
+  Comparing with the proof of convergence of Hopfield network, i.e.
+  <math|\<Delta\>E<rsub|W><around*|(|x|)>=-2 \<Delta\>x<rsup|\<alpha\>>
+  W<rsub|\<alpha\> \ \<beta\>> x<rsup|\<beta\>>>, the analogy is obvious. The
+  only differences are that the condition <math|W<rsub|\<alpha\>
+  \<alpha\>>=0> and the <math|sign>-function are absent here.
 </body>
 
 <initial|<\collection>
@@ -109,6 +162,8 @@
   <\collection>
     <associate|auto-1|<tuple|1|?>>
     <associate|auto-2|<tuple|1|?>>
+    <associate|auto-3|<tuple|1.1|?>>
+    <associate|auto-4|<tuple|1.2|?>>
   </collection>
 </references>
 
