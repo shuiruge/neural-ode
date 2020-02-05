@@ -1,4 +1,5 @@
-"""Implements the materials in the "Energy Based" section of the doc."""
+"""Implements the materials in the "Continuum of Hopfield" section of the
+documentation."""
 
 import tensorflow as tf
 from node.utils.nest import nest_map
