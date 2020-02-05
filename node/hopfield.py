@@ -8,13 +8,12 @@ def check_lower_bound(lower_bound):
   """
   Args:
     lower_bound: float
-  
+
   Returns:
     Decorator that checks the lower bound of the outputs of the decorated
     function.
   """
-  with tf.name_scope('lower_bound'):
-    lower_bound = tf.convert_to_tensor(lower_bound)
+  lower_bound = tf.convert_to_tensor(lower_bound)
 
   @nest_map
   def _check_lower_bound(y):
@@ -25,17 +24,16 @@ def check_lower_bound(lower_bound):
     @tf.function
     def lower_bounded_fn(*args, **kwargs):
       y = fn(*args, **kwargs)
-      with tf.name_scope('check_lower_bound'):
-        _check_lower_bound(y)
+      _check_lower_bound(y)
       return y
-    
+
     return lower_bounded_fn
-  
+
   return decorator
 
 
 @nest_map
-def identity(x, name='identity'):
+def identity(x):
   """The identity linear transform.
 
   Args:
@@ -43,8 +41,7 @@ def identity(x, name='identity'):
 
   Returns: PhasePoint
   """
-  with tf.name_scope(name):
-    return x
+  return x
 
 
 def rescale(factor):
@@ -56,15 +53,13 @@ def rescale(factor):
 
   Returns: Callable[[PhasePoint], PhasePoint]
   """
-  with tf.name_scope('rescale_factor'):
-    assert factor > 0.
-    factor = tf.convert_to_tensor(factor)
+  assert factor > 0.
+  factor = tf.convert_to_tensor(factor)
 
   @tf.function
   @nest_map
-  def rescale_fn(x, name='rescale'):
-    with tf.name_scope(name):
-      return factor * x
+  def rescale_fn(x):
+    return factor * x
 
   return rescale_fn
 
@@ -91,12 +86,11 @@ def hopfield(linear_transform, lower_bounded_fn):
   """
 
   @tf.function
-  def static_field(_, x, name='hopfield_field'):
-    with tf.name_scope(name):
-      with tf.GradientTape() as g:
-        g.watch(x)
-        e = lower_bounded_fn(x)
-      grad = g.gradient(e, x, unconnected_gradients='zero')
-      return -linear_transform(grad)
+  def static_field(_, x):
+    with tf.GradientTape() as g:
+      g.watch(x)
+      e = lower_bounded_fn(x)
+    grad = g.gradient(e, x, unconnected_gradients='zero')
+    return -linear_transform(grad)
 
   return static_field

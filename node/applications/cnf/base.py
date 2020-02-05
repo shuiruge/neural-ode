@@ -38,8 +38,7 @@ class CNF(tfp.bijectors.Bijector):
     return self._inverse_fn(self.t0, y)
 
   def _forward_log_det_jacobian(self, x):
-    with tf.name_scope('forward_log_det_jacobian_field'):
-      x_and_log_det_jacobian = [x, tf.zeros(x.shape[:-1])]
-      x, log_det_jacobian = self._forward_log_prob_fn(
-          self.t1, x_and_log_det_jacobian)
-      return log_det_jacobian
+    x_and_log_det_jacobian = [x, tf.zeros(x.shape[:-1])]
+    x, log_det_jacobian = self._forward_log_prob_fn(
+        self.t1, x_and_log_det_jacobian)
+    return log_det_jacobian

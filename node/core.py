@@ -34,48 +34,44 @@ def reverse_mode_derivative(ode_solver, network, variables):
   """
 
   @tf.function
-  def aug_dynamics(time, aug_phase_point, name='augument_dynamics'):
-    with tf.name_scope(name):
-      state, adjoint, *_ = aug_phase_point
-      neg_adjoint = _negate(adjoint)
+  def aug_dynamics(time, aug_phase_point):
+    state, adjoint, *_ = aug_phase_point
+    neg_adjoint = _negate(adjoint)
 
-      with tf.GradientTape() as g:
-        g.watch(state)
-        output = network(time, state)
-      # According to
-      # # https://www.tensorflow.org/api_docs/python/tf/custom_gradient
-      # `tf.gradients` or `g.gradient`, if the third argument is filled,
-      # returns the vector-Jacobian-products directly. In fact, TF
-      # implements VJP inside, and compute gradients via VJP.
-      vjps = g.gradient(output, [state] + variables, neg_adjoint,
-                        unconnected_gradients='zero')
+    with tf.GradientTape() as g:
+      g.watch(state)
+      output = network(time, state)
+    # According to
+    # # https://www.tensorflow.org/api_docs/python/tf/custom_gradient
+    # `tf.gradients` or `g.gradient`, if the third argument is filled,
+    # returns the vector-Jacobian-products directly. In fact, TF
+    # implements VJP inside, and compute gradients via VJP.
+    vjps = g.gradient(output, [state] + variables, neg_adjoint,
+                      unconnected_gradients='zero')
 
-      new_aug_phase_point = [output] + vjps
-      return new_aug_phase_point
+    new_aug_phase_point = [output] + vjps
+    return new_aug_phase_point
 
   forward = ode_solver(aug_dynamics)
 
   @tf.function
-  def backward(start_time, end_time, final_state, final_loss_gradient,
-               name='backward'):
-    with tf.name_scope(name):
-      final_phase_point = [final_state, final_loss_gradient]
-      for var in variables:
-        zeros = tf.zeros_like(var)
-        final_phase_point.append(zeros)
-      ode_final_value = forward(end_time,
-                                start_time,
-                                final_phase_point)
-      init_state, init_loss_gradient, *grad_loss_by_vars = ode_final_value
-      return init_state, init_loss_gradient, list(grad_loss_by_vars)
+  def backward(start_time, end_time, final_state, final_loss_gradient):
+    final_phase_point = [final_state, final_loss_gradient]
+    for var in variables:
+      zeros = tf.zeros_like(var)
+      final_phase_point.append(zeros)
+    ode_final_value = forward(end_time,
+                              start_time,
+                              final_phase_point)
+    init_state, init_loss_gradient, *grad_loss_by_vars = ode_final_value
+    return init_state, init_loss_gradient, list(grad_loss_by_vars)
 
   return backward
 
 
 @nest_map
-def _negate(x, name='negate'):
-  with tf.name_scope(name):
-    return -1 * x
+def _negate(x):
+  return -1 * x
 
 
 def get_node_function(solver, t0, fn):
@@ -103,7 +99,7 @@ def get_node_function(solver, t0, fn):
       return list(args)
 
   @tf.function
-  def node_fn(t, x, name='node_fn'):
+  def node_fn(t, x):
     """
     Args:
       t: Time
@@ -129,25 +125,23 @@ def get_node_function(solver, t0, fn):
       # and pass them into the `grad_fn` via the `variables` kwarg.
       @tf.function
       def grad_fn(*grad_ys, **kwargs):
-        with tf.name_scope('gradient'):
-          # XXX: `tf.custom_gradient` has an unfixed
-          # [bug](https://github.com/tensorflow/tensorflow/issues/31945).
-          # Because of this, temporally, we need some [hacking]
-          # (https://github.com/tensorflow/tensorflow/issues/31945#issuecomment-545801180)  # noqa:E501
-          # TODO: Re-write this part when the bug is fixed.
-          grad_ys = process_args(grad_ys)
-          variables = kwargs.get('variables', None)
+        # XXX: `tf.custom_gradient` has an unfixed
+        # [bug](https://github.com/tensorflow/tensorflow/issues/31945).
+        # Because of this, temporally, we need some [hacking]
+        # (https://github.com/tensorflow/tensorflow/issues/31945#issuecomment-545801180)  # noqa:E501
+        # TODO: Re-write this part when the bug is fixed.
+        grad_ys = process_args(grad_ys)
+        variables = kwargs.get('variables', None)
 
-          backward = reverse_mode_derivative(solver, fn, variables)
-          _, grad_by_x, grad_by_vars = backward(t0, t, y, grad_ys)
-          return [grad_by_x], grad_by_vars
+        backward = reverse_mode_derivative(solver, fn, variables)
+        _, grad_by_x, grad_by_vars = backward(t0, t, y, grad_ys)
+        return [grad_by_x], grad_by_vars
 
       return y, grad_fn
 
-    with tf.name_scope(name):
-      if isinstance(x, list):
-        return custom_gradient_fn(*x)
-      else:
-        return custom_gradient_fn(x)
+    if isinstance(x, list):
+      return custom_gradient_fn(*x)
+    else:
+      return custom_gradient_fn(x)
 
   return node_fn
