@@ -81,7 +81,8 @@ def hopfield(linear_transform, lower_bounded_fn):
   Args:
     linear_trans: Callable[[PhasePoint], PhasePoint]
       Positive defined linear transformation. The $U$ transform.
-    lower_bounded_fn: LowerBoundedFunction
+    lower_bounded_fn: Callable[[PhasePoint], tf.Tensor]
+      The lower bounded scalar function `\mathcal{E}`.
 
   Returns: PhaseVectorField
   """
