@@ -9,14 +9,14 @@ from node.applications.cnf.base import CNF
 
 class Planar(CNF):
   """C.f., ref(1)."""
-  def __init__(self, hyper_net, t0, t1, **kwargs):
+  def __init__(self, input_dim, hidden_dim, n_ensemble, t0, t1, **kwargs):
     super().__init__(t0, t1, **kwargs)
-    self.hyper_net = hyper_net
+    self._hyper_net = HyperNet(input_dim, hidden_dim, n_ensemble)
 
   @tf.function
   def _dynamics(self, t, x):
-    W, b, u = self.hyper_net(t)
-    n_esamble = self.hyper_net.n_ensemble
+    W, b, u = self._hyper_net(t)
+    n_esamble = self._hyper_net.n_ensemble
     x = tf.tile(tf.expand_dims(x, 0), [n_esamble, 1, 1])
     h = tf.tanh(tf.matmul(x, W) + b)
     return tf.reduce_mean(tf.matmul(h, u), 0)
@@ -24,8 +24,8 @@ class Planar(CNF):
   @tf.function
   def _log_prob_dynamics(self, t, x_and_log_prob):
     x, _ = x_and_log_prob
-    W, b, u = self.hyper_net(t)
-    n_esamble = self.hyper_net.n_ensemble
+    W, b, u = self._hyper_net(t)
+    n_esamble = self._hyper_net.n_ensemble
     x = tf.tile(tf.expand_dims(x, 0), [n_esamble, 1, 1])
 
     with tf.GradientTape() as g:
