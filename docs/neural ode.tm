@@ -114,7 +114,7 @@
     along <math|x<around*|(|t|)>> if
 
     <\equation*>
-      <frac|d x<rsup|\<alpha\>>|d t><around*|(|t|)>=-g<rsup|><rsup|\<alpha\>\<beta\>><around*|(|x<around*|(|t|)>|)><frac|\<partial\><with|math-font|cal|E>|\<partial\>x<rsup|\<beta\>>><around*|(|x<around*|(|t|)>|)>.
+      <frac|d x<rsup|\<alpha\>>|d t><around*|(|t|)>=-\<nabla\><rsup|\<alpha\>><with|math-font|cal|E><around*|(|x<around*|(|t|)>|)>.
     </equation*>
   </theorem>
 
@@ -122,8 +122,9 @@
     We have
 
     <\equation*>
-      <frac|d<with|math-font|cal|E>|d t><around*|(|t|)>=<frac|\<partial\><with|math-font|cal|E>|\<partial\>x<rsup|\<alpha\>>><around*|(|x<around*|(|t|)>|)><frac|d
-      x<rsup|\<alpha\>>|d t><around*|(|t|)>=-g<rsup|><rsup|\<alpha\>\<beta\>><around*|(|x<around*|(|t|)>|)><frac|\<partial\><with|math-font|cal|E>|\<partial\>x<rsup|\<alpha\>>><around*|(|x<around*|(|t|)>|)><frac|\<partial\><with|math-font|cal|E>|\<partial\>x<rsup|\<beta\>>><around*|(|x<around*|(|t|)>|)>\<leqslant\>0.
+      <frac|d<with|math-font|cal|E>|d t><around*|(|t|)>=\<nabla\><rsub|\<alpha\>><with|math-font|cal|E><around*|(|x<around*|(|t|)>|)><frac|d
+      x<rsup|\<alpha\>>|d t><around*|(|t|)>=-\<nabla\><rsub|\<alpha\>><with|math-font|cal|E><around*|(|x<around*|(|t|)>|)>
+      \<nabla\><rsup|\<alpha\>><with|math-font|cal|E><around*|(|x<around*|(|t|)>|)>\<leqslant\>0.
     </equation*>
   </proof>
 
@@ -139,7 +140,7 @@
   \<beta\>>=W<rsub|\<beta\> \<alpha\>>>, then dynamics becomes
 
   <\equation*>
-    <frac|d x<rsub|\<alpha\>>|d t><around*|(|t|)>=-<frac|\<partial\><with|math-font|cal|E>|\<partial\>x<rsup|\<alpha\>>><around*|(|x<around*|(|t|)>|)>=-2
+    <frac|d x<rsub|\<alpha\>>|d t><around*|(|t|)>=-\<nabla\><rsub|\<alpha\>><with|math-font|cal|E><around*|(|x<around*|(|t|)>|)>=-2
     W<rsub|\<alpha\> \<beta\>> x<rsup|\<beta\>><around*|(|t|)>,
   </equation*>
 
@@ -163,47 +164,6 @@
   <\equation*>
     <frac|d x<rsup|\<alpha\>>|d t><around*|(|t|)>=-\<delta\><rsup|><rsup|\<alpha\>\<beta\>><frac|\<partial\><with|math-font|cal|E>|\<partial\>x<rsup|\<beta\>>><around*|(|x<around*|(|t|)>|)>.
   </equation*>
-
-  <subsection|Quadratic Form and Homogeneousness>
-
-  <\theorem>
-    Let <math|h<around*|(|.;\<theta\>|)>\<in\>C<rsup|1><around*|(|M,M|)>> is
-    a neural network parameterized by <math|\<theta\>>. If the activations
-    within <math|h<around*|(|.;\<theta\>|)>> are ReLU and linear ones, then
-    the Hopfield dynamic with a quadratic form of energy
-    <math|<with|math-font|cal|E><around*|(|x|)>=h<rsub|\<alpha\>><around*|(|x;\<theta\>|)>h<rsup|\<alpha\>><around*|(|x;\<theta\>|)>>
-    is formally invariant for rescaling <math|x\<rightarrow\>\<lambda\> x>.
-  </theorem>
-
-  <\proof>
-    If <math|<with|math-font|cal|E><around*|(|x|)>=h<rsub|\<alpha\>><around*|(|x;\<theta\>|)>h<rsup|\<alpha\>><around*|(|x;\<theta\>|)>>,
-    then the Hopfield dynamics with energy <math|<with|math-font|cal|E>>
-    becomes
-
-    <\equation*>
-      <frac|d x<rsub|\<alpha\>>|d t><around*|(|t|)>=-2
-      h<rsub|\<beta\>><around*|(|x<around*|(|t|)>;\<theta\>|)>\<nabla\><rsub|\<alpha\>>h<rsup|\<beta\>><around*|(|x<around*|(|t|)>;\<theta\>|)>.
-    </equation*>
-
-    If <math|h<around*|(|.;\<theta\>|)>> is homogeneous, i.e.
-    <math|\<exists\>r\<in\>\<bbb-R\>> <math|\<forall\>\<lambda\>\<in\>\<bbb-R\>>
-    <math|h<around*|(|\<lambda\> x;\<theta\>|)>=\<lambda\><rsup|r>
-    h<around*|(|x;\<theta\>|)>>, then <math|x\<rightarrow\>\<lambda\> x>
-    induces
-
-    <\equation*>
-      <frac|d x<rsub|\<alpha\>>|d t><around*|(|t|)>=-2 \<lambda\><rsup|2r-2>
-      h<rsub|\<beta\>><around*|(|x<around*|(|t|)>;\<theta\>|)>\<nabla\><rsub|\<alpha\>>h<rsup|\<beta\>><around*|(|x<around*|(|t|)>;\<theta\>|)>.
-    </equation*>
-
-    If <math|r=1>, then this dynamic is formally invariant for rescaling
-    <math|x\<rightarrow\>\<lambda\> x>.
-
-    Notice that ReLU activation is homogeneous with <math|r=1>, so is any
-    linear transform. Then general neural network with ReLU and linear
-    activations is homogeneous with <math|r=1>. For such neural networks, the
-    dynamic is formally invariant.
-  </proof>
 </body>
 
 <initial|<\collection>
@@ -216,7 +176,6 @@
     <associate|auto-3|<tuple|1.1|?>>
     <associate|auto-4|<tuple|1.2|?>>
     <associate|auto-5|<tuple|1.3|?>>
-    <associate|auto-6|<tuple|1.3|?>>
   </collection>
 </references>
 
@@ -240,8 +199,8 @@
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-4>>
 
-      <with|par-left|<quote|1tab>|1.3<space|2spc>Quadratic Form
-      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <with|par-left|<quote|1tab>|1.3<space|2spc>Quadratic Form and
+      Homogeneousness <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-5>>
     </associate>
   </collection>
