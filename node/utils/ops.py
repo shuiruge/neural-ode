@@ -1,14 +1,20 @@
 import tensorflow as tf
 
 
-def swapaxes(a, axis1, axis2):
-  shape = a.get_shape().as_list()
+def swapaxes(x, axis1, axis2):
+  rank = len(tf.shape(x))
+  if axis1 < 0:
+    axis1 = rank + axis1
+  if axis2 < 0:
+    axis2 = rank + axis2
+
   perm = []
-  for axis, dim in enumerate(shape):
+  for axis in range(rank):
     if axis == axis1:
       perm.append(axis2)
     elif axis == axis2:
       perm.append(axis1)
     else:
       perm.append(axis)
-  return tf.transpose(a, perm)
+
+  return tf.transpose(x, perm)
