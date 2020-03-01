@@ -107,8 +107,8 @@
   continuum.
 
   <\theorem>
-    Let <math|M> be a Riemann manifold with metric <math|g>. Given any
-    function <math|<with|math-font|cal|E>\<in\>C<rsup|1><around*|(|M,\<bbb-R\>|)>>.
+    <label|hopfield dynamics>Let <math|M> be a Riemann manifold with metric
+    <math|g>. Given any function <math|<with|math-font|cal|E>\<in\>C<rsup|1><around*|(|M,\<bbb-R\>|)>>.
     Let <math|x<around*|(|t|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>,M|)>>
     denote trajectory. Then, <math|d<with|math-font|cal|E>/dt\<leqslant\>0>
     along <math|x<around*|(|t|)>> if
@@ -164,6 +164,116 @@
   <\equation*>
     <frac|d x<rsup|\<alpha\>>|d t><around*|(|t|)>=-\<delta\><rsup|><rsup|\<alpha\>\<beta\>><frac|\<partial\><with|math-font|cal|E>|\<partial\>x<rsup|\<beta\>>><around*|(|x<around*|(|t|)>|)>.
   </equation*>
+
+  <subsection|General Form>
+
+  In the proof of theorem <reference|hopfield dynamics>,
+
+  <\equation*>
+    <frac|d<with|math-font|cal|E>|d t><around*|(|t|)>=\<nabla\><rsub|\<alpha\>><with|math-font|cal|E><around*|(|x<around*|(|t|)>|)><frac|d
+    x<rsup|\<alpha\>>|d t><around*|(|t|)>.
+  </equation*>
+
+  We try to find the generic form of <math|d x<rsup|\<alpha\>>/d t> that
+  ensures <math|d <with|math-font|cal|E>/d t\<leqslant\>0>. To restrict the
+  formation, symmetries are called for. Denote
+
+  <\equation*>
+    <frac|d x<rsup|\<alpha\>>|d t>=F<rsup|\<alpha\>><around*|[|<with|math-font|cal|E>|]><around*|(|x|)>.
+  </equation*>
+
+  <\axiom>
+    Locality.
+  </axiom>
+
+  This implies:
+
+  <\equation*>
+    F<around*|[|<with|math-font|cal|E>|]>=F<around*|(|<with|math-font|cal|E>,\<nabla\><with|math-font|cal|E>,\<nabla\><rsup|2><with|math-font|cal|E>,\<ldots\>.|)>;
+  </equation*>
+
+  <\axiom>
+    <math|<with|math-font|cal|E>\<rightarrow\><with|math-font|cal|E>+C> for
+    any constant <math|C>.
+  </axiom>
+
+  Combining with the previous, this then implies
+
+  <\equation*>
+    F<around*|[|<with|math-font|cal|E>|]>=F<around*|(|\<nabla\><with|math-font|cal|E>,\<nabla\><rsup|2><with|math-font|cal|E>,\<ldots\>.|)>.
+  </equation*>
+
+  <\axiom>
+    Co-variance.
+  </axiom>
+
+  This implies the balance of index. Thus
+
+  <\equation*>
+    F<rsup|\<alpha\>><around*|[|<with|math-font|cal|E>|]>=c<rsub|1>\<nabla\><rsup|\<alpha\>><with|math-font|cal|E>+c<rsub|3>\<nabla\><rsup|\<alpha\>><with|math-font|cal|E><around*|(|\<nabla\><rsup|\<beta\>><with|math-font|cal|E>\<nabla\><rsub|\<beta\>><with|math-font|cal|E>|)>+c<rsub|3><rprime|'>\<nabla\><rsup|\<alpha\>><with|math-font|cal|E><around*|(|\<nabla\><rsup|\<beta\>>\<nabla\><rsub|\<beta\>><with|math-font|cal|E>|)>+<with|math-font|cal|O><around*|(|\<nabla\><rsup|5>|)>.
+  </equation*>
+
+  <\axiom>
+    <label|axiom of numerical stability>For <math|x\<rightarrow\>\<lambda\>
+    x>, <math|\<exists\>k\<less\>m\<less\>M\<less\>K> s.t.
+    <math|m\<less\>F<around*|[|<with|math-font|cal|E>|]><around*|(|x|)>\<less\>M>
+    for any <math|\<lambda\>>, where <math|k> and <math|K> are numerically
+    finite. E.g. <math|k\<sim\>1> and <math|K\<sim\>10>. This is essential
+    for numerical stability, i.e. no under- and over-flow.
+  </axiom>
+
+  First, we have to notice a property of the feed forward neural network with
+  rectified activations (e.g. ReLU, leaky ReLU, and linear).
+
+  <\lemma>
+    <label|homogenity>Let <math|f<rsub|nn><around*|(|x;\<theta\>|)>> a feed
+    forward nerual network with rectified activations, where <math|\<theta\>>
+    represents the parameters (weights and biases). At the initial stage of
+    training, <math|f<rsub|nn><around*|(|.;\<theta\>|)>> is linearly
+    homogeneous. That is,
+
+    <\equation*>
+      f<rsub|nn><around*|(|\<lambda\> x;\<theta\><rsub|ini>|)>\<approx\>\<lambda\>
+      f<rsub|nn><around*|(|x;\<theta\><rsub|ini>|)>.
+    </equation*>
+  </lemma>
+
+  <\proof>
+    Notice that <math|f<rsub|nn><around*|(|.;\<theta\>|)>> is linearly
+    homogeneous when its biases vanish, and that biases are initialized as
+    zeros. So, at the initial stage of training, biases can be approximatly
+    omitted. Thus, in this stage, <math|f<rsub|nn><around*|(|.;\<theta\>|)>>
+    is approximatly linearly homogeneous, i.e.
+    <math|f<rsub|nn><around*|(|\<lambda\>
+    x;\<theta\><rsub|ini>|)>\<approx\>\<lambda\>
+    f<rsub|nn><around*|(|x;\<theta\><rsub|ini>|)>>.
+  </proof>
+
+  If <math|<with|math-font|cal|E>> is constructed by such neural network,
+  <math|F<around*|[|<with|math-font|cal|E>|]>> can be further simplified.
+  Indeed, if <math|<with|math-font|cal|E><around*|(|x;\<theta\>|)>\<assign\><sqrt|f<rsub|\<alpha\>><around*|(|x;\<theta\>|)>
+  f<rsup|\<alpha\>><around*|(|x;\<theta\>|)>>>, then
+  <math|<with|math-font|cal|E><around*|(|\<lambda\>
+  x;\<theta\><rsub|ini>|)>=\<lambda\> <with|math-font|cal|E><around*|(|x;\<theta\><rsub|ini>|)>>,
+  implying <math|F<rsup|\<alpha\>><around*|[|<with|math-font|cal|E>|]>=c<rsub|1>\<nabla\><rsup|\<alpha\>><with|math-font|cal|E>+c<rsub|3>\<nabla\><rsup|\<alpha\>><with|math-font|cal|E><around*|(|\<nabla\><rsup|\<beta\>><with|math-font|cal|E>\<nabla\><rsub|\<beta\>><with|math-font|cal|E>|)>+<with|math-font|cal|O><around*|(|\<nabla\><rsup|5>|)>>,
+  which scales as <math|\<lambda\><rsup|0>>.<\footnote>
+    Numerical experiment on MNIST dataset shows that this configuration
+    indeed out-performs than others, like
+    <math|<with|math-font|cal|E><around*|(|x;\<theta\>|)>\<assign\>f<rsub|\<alpha\>><around*|(|x;\<theta\>|)>
+    f<rsup|\<alpha\>><around*|(|x;\<theta\>|)>>,
+    <math|<with|math-font|cal|E><around*|(|x;\<theta\>|)>\<assign\>f<rsup|2><around*|(|x;\<theta\>|)>>,
+    and non-Hopfield, e.t.c. In this experiment, <math|c<rsub|1>=5> and
+    <math|c<rsub|i\<gtr\>1>\<equiv\>0>; Nadam optimizer is employed, with
+    standard parameters, except for <math|\<epsilon\>=10<rsup|-3>>; the
+    dimension of <math|x> is <math|64>. For the details, c.f. the file
+    <samp|node/experiments/Hopfield.ipynb>.
+  </footnote>
+
+  Alternatively, if <math|<with|math-font|cal|E><around*|(|x;\<theta\>|)>\<assign\>f<rsup|2><around*|(|x;\<theta\>|)>>,
+  then <math|<with|math-font|cal|E><around*|(|\<lambda\>
+  x;\<theta\><rsub|ini>|)>=\<lambda\><rsup|2>
+  <with|math-font|cal|E><around*|(|x;\<theta\><rsub|ini>|)>>. In this case,
+  axiom <reference|axiom of numerical stability> can never be satisfied.
 </body>
 
 <initial|<\collection>
@@ -176,6 +286,11 @@
     <associate|auto-3|<tuple|1.1|?>>
     <associate|auto-4|<tuple|1.2|?>>
     <associate|auto-5|<tuple|1.3|?>>
+    <associate|axiom of numerical stability|<tuple|6|?>>
+    <associate|footnote-1|<tuple|1|?>>
+    <associate|footnr-1|<tuple|1|?>>
+    <associate|homogenity|<tuple|7|?>>
+    <associate|hopfield dynamics|<tuple|2|?>>
   </collection>
 </references>
 
@@ -199,8 +314,8 @@
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-4>>
 
-      <with|par-left|<quote|1tab>|1.3<space|2spc>Quadratic Form and
-      Homogeneousness <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <with|par-left|<quote|1tab>|1.3<space|2spc>General Form
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-5>>
     </associate>
   </collection>
