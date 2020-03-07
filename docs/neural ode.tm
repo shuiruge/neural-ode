@@ -1,4 +1,4 @@
-<TeXmacs|1.99.11>
+<TeXmacs|1.99.10>
 
 <style|generic>
 
@@ -179,8 +179,10 @@
   formation, symmetries are called for. Denote
 
   <\equation*>
-    <frac|d x<rsup|\<alpha\>>|d t>=F<rsup|\<alpha\>><around*|[|<with|math-font|cal|E>|]><around*|(|x|)>.
+    <frac|d x<rsup|\<alpha\>>|d t>=F<rsup|\<alpha\>><around*|[|<with|math-font|cal|E>|]><around*|(|x|)>,
   </equation*>
+
+  where operator <math|F:C<rsup|\<infty\>><around*|(|M,M|)>\<mapsto\>C<around*|(|M,M|)>>.
 
   <\axiom>
     Locality.
@@ -226,27 +228,32 @@
   rectified activations (e.g. ReLU, leaky ReLU, and linear).
 
   <\lemma>
+    Rectified activations are linearly homogeneous.
+  </lemma>
+
+  <\lemma>
+    If <math|f> and g are homogeneous with order <math|\<lambda\><rsub|f>>
+    and <math|\<lambda\><rsub|g>> respectively, then <math|f\<circ\>g> is
+    homogeneous with order <math|\<lambda\><rsub|f>+\<lambda\><rsub|g>>.\ 
+  </lemma>
+
+  <\theorem>
     <label|homogenity>Let <math|f<rsub|nn><around*|(|x;\<theta\>|)>> a feed
     forward nerual network with rectified activations, where <math|\<theta\>>
     represents the parameters (weights and biases). At the initial stage of
     training, <math|f<rsub|nn><around*|(|.;\<theta\>|)>> is linearly
-    homogeneous. That is,
+    homogeneous.<strong|> That is
 
     <\equation*>
-      f<rsub|nn><around*|(|\<lambda\> x;\<theta\><rsub|ini>|)>\<approx\>\<lambda\>
-      f<rsub|nn><around*|(|x;\<theta\><rsub|ini>|)>.
+      f<rsub|nn><around*|(|\<lambda\>x;\<theta\><rsub|ini>|)>=\<lambda\>f<around*|(|x;\<theta\><rsub|ini>|)>.
     </equation*>
-  </lemma>
+  </theorem>
 
   <\proof>
     Notice that <math|f<rsub|nn><around*|(|.;\<theta\>|)>> is linearly
     homogeneous when its biases vanish, and that biases are initialized as
-    zeros. So, at the initial stage of training, biases can be approximatly
-    omitted. Thus, in this stage, <math|f<rsub|nn><around*|(|.;\<theta\>|)>>
-    is approximatly linearly homogeneous, i.e.
-    <math|f<rsub|nn><around*|(|\<lambda\>
-    x;\<theta\><rsub|ini>|)>\<approx\>\<lambda\>
-    f<rsub|nn><around*|(|x;\<theta\><rsub|ini>|)>>.
+    zeros. So <math|f<rsub|nn><around*|(|.;\<theta\>|)>> is linearly
+    homogeneous at initial stage of training.
   </proof>
 
   If <math|<with|math-font|cal|E>> is constructed by such neural network,
@@ -289,7 +296,7 @@
     <associate|axiom of numerical stability|<tuple|6|?>>
     <associate|footnote-1|<tuple|1|?>>
     <associate|footnr-1|<tuple|1|?>>
-    <associate|homogenity|<tuple|7|?>>
+    <associate|homogenity|<tuple|9|?>>
     <associate|hopfield dynamics|<tuple|2|?>>
   </collection>
 </references>
