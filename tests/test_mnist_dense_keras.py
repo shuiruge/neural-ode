@@ -3,7 +3,8 @@ r"""C.f. `./test_mnist_dense.py`"""
 import numpy as np
 import tensorflow as tf
 from node.core import get_node_function
-from node.solvers import RK4Solver
+# from node.solvers import RK4Solver
+from node.solvers.runge_kutta import RK4Solver
 from node.utils.initializers import GlorotUniform
 
 
