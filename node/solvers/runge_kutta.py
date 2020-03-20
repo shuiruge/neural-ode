@@ -44,7 +44,9 @@ class RungeKuttaStep:
 
   Args:
     a: List[Optional[float]]
+      a[0] shall be `None` and others are floats.
     b: List[List[Optional[float]]]
+      b[0] is `None` and others are lists of floats.
   """
 
   def __init__(self, a, b):
@@ -99,7 +101,9 @@ class RungeKuttaSolver(ODESolver):
 
   Args:
     a: List[Optional[float]]
+      a[0] shall be `None` and others are floats.
     b: List[List[Optional[float]]]
+      b[0] is `None` and others are lists of floats.
     c: List[float]
     dt: float
     min_dt: float
@@ -167,13 +171,15 @@ class RungeKuttaFehlbergSolver(ODESolver):
 
   Args:
     a: List[Optional[float]]
+      a[0] shall be `None` and others are floats.
     b: List[List[Optional[float]]]
+      b[0] is `None` and others are lists of floats.
     c: List[float]
     e: List[float]
     init_dt: float
     tol: float
     min_dt: float
-    max_dt: float
+    max_dt: Optional[float]
   """
 
   def __init__(self, a, b, c, e, init_dt, tol, min_dt, max_dt):
@@ -183,7 +189,10 @@ class RungeKuttaFehlbergSolver(ODESolver):
     self.init_dt = tf.convert_to_tensor(init_dt)
     self.tol = tf.convert_to_tensor(tol)
     self.min_dt = tf.convert_to_tensor(min_dt)
-    self.max_dt = tf.convert_to_tensor(max_dt)
+    if max_dt is None:
+      self.max_dt = None
+    else:
+      self.max_dt = tf.convert_to_tensor(max_dt)
     self._rk_step = RungeKuttaStep(a, b)
 
   def __call__(self, fn):
@@ -200,9 +209,7 @@ class RungeKuttaFehlbergSolver(ODESolver):
 
       return norm(_rs(*ks))
 
-    @tf.function(experimental_autograph_options=(
-        tf.autograph.experimental.Feature.ASSERT_STATEMENTS)
-    )
+    @tf.function
     def forward(t0, t1, x0):
       # If t0 > t1, then flip the t-axis to ensure the
       # situation of the Runge-Kutta method
@@ -219,7 +226,8 @@ class RungeKuttaFehlbergSolver(ODESolver):
           dt = t1 - t
         ks = self._rk_step(fn, t, x, dt, flip=flip)
         r = error(dt, *ks)
-        if r < self.tol:
+        # if r < self.tol:  # TODO
+        if r < self.tol or dt <= self.min_dt:
           x = add(x, dx(*ks))
           t = t + dt
         delta = 0.84 * tf.pow(self.tol / r, 1 / 4)
@@ -231,7 +239,11 @@ class RungeKuttaFehlbergSolver(ODESolver):
           dt = delta * dt
         if self.max_dt is not None and dt > self.max_dt:
           dt = self.max_dt
-        assert dt > self.min_dt
+        # Assertion is temporally not well supported in TF,
+        # so we currently limit the `dt` by `self.min_dt`
+        # instead of raising an error.
+        if dt < self.min_dt:
+          dt = self.min_dt
       return x
 
     return forward
@@ -266,7 +278,7 @@ class RKF56Solver(RungeKuttaFehlbergSolver):
   _C = [25 / 216, 0, 1408 / 2565, 2197 / 4104, -1 / 5, 0]
   _E = [1 / 360, 0, -128 / 4275, -2197 / 75240, 1 / 50, 2 / 55]
 
-  def __init__(self, dt, tol, min_dt=1e-10, max_dt=1e-0):
+  def __init__(self, dt, tol, min_dt, max_dt=None):
     super().__init__(self._A, self._B, self._C, self._E,
                      dt, tol, min_dt, max_dt)
 

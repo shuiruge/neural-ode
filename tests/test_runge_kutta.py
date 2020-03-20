@@ -37,7 +37,7 @@ def test_rk4_solver():
 
 
 def test_rkf56_solver():
-  solver = RKF56Solver(0.1, tol=1e-3)
+  solver = RKF56Solver(0.1, tol=1e-3, min_dt=1e-2)
 
   # the first example
 

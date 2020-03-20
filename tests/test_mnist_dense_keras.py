@@ -3,14 +3,17 @@ r"""C.f. `./test_mnist_dense.py`"""
 import numpy as np
 import tensorflow as tf
 from node.core import get_node_function
-# from node.solvers import RK4Solver
-from node.solvers.runge_kutta import RK4Solver
+from node.solvers.runge_kutta import RK4Solver, RKF56Solver
 from node.utils.initializers import GlorotUniform
 
 
 # for reproducibility
 np.random.seed(42)
 tf.random.set_seed(42)
+
+
+SOLVER = 'rk4'
+# SOLVER = 'rkf56'
 
 
 class MyLayer(tf.keras.layers.Layer):
@@ -32,8 +35,16 @@ class MyLayer(tf.keras.layers.Layer):
     self._model.build([None, units])
 
     self._pvf = lambda _, x: self._model(x)
+
+    if SOLVER == 'rk4':
+      solver = RK4Solver(self.dt)
+    elif SOLVER == 'rkf56':
+      solver = RKF56Solver(self.dt, tol=1e-2, min_dt=1e-2)
+    else:
+      raise ValueError(f'Unknown solver: {SOLVER}')
+
     self._node_fn = get_node_function(
-        RK4Solver(self.dt), tf.constant(0.), self._pvf)
+        solver, tf.constant(0.), self._pvf)
 
   def call(self, x):
     y = self._node_fn(self.tN, x)
