@@ -56,6 +56,7 @@ def reverse_mode_derivative(ode_solver, network, variables):
 
   @tf.function
   def backward(start_time, end_time, final_state, final_loss_gradient):
+    print(f'tracing: {final_state}, {final_loss_gradient}')
     final_phase_point = [final_state, final_loss_gradient]
     for var in variables:
       zeros = tf.zeros_like(var)
@@ -74,7 +75,7 @@ def _negate(x):
   return -1 * x
 
 
-def get_node_function(solver, t0, fn):
+def get_node_function(solver, t0, fn, signature=None):
   r"""Converts a phase vector field `f(t, x)` to `F(t, x)` which is defined
   as $ F(t, x) = \int_{t_0}^t f(t, F(t, x)) dt $, where $ F(t_0, x) = x $.
   That is, the ending phase point at `t` of the flow starting on `x` at `t0`
@@ -85,6 +86,8 @@ def get_node_function(solver, t0, fn):
     t0: Time
       The start time of the phase flow.
     fn: PhaseVectorField
+    signature: NestList[tf.TensorSpec]
+      The signature of the phase point.
 
   Returns: PhaseVectorField
   """
@@ -98,7 +101,13 @@ def get_node_function(solver, t0, fn):
       # the nesting structures
       return list(args)
 
-  @tf.function
+  if signature is None:
+    input_signature = None
+  else:
+    time_signature = tf.TensorSpec(shape=[], dtype=t0.dtype)
+    input_signature = [time_signature, signature]
+
+  @tf.function(input_signature=input_signature)
   def node_fn(t, x):
     """
     Args:
