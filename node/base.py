@@ -1,19 +1,31 @@
 """Definitions"""
 
 import tensorflow as tf
-from typing import Union, List, Callable
 
-Time = float
-PhasePoint = Union[tf.Tensor, List[tf.Tensor]]
-PhaseVectorField = Callable[[Time, PhasePoint], PhasePoint]
 
+class Time:
+  """Type that represents `tf.Tensor` with shape `[]` and float dtype."""
+
+
+class PhasePoint:
+  """Type that represents `tf.Tensor` or nest structure of `tf.Tensor`."""
+
+
+class PhaseVectorField:
+  """Type that represents callable with inputs `Time` and `PhasePoint`
+  and output `PhasePoint`. The input and output phase points share the same
+  shape and dtype."""
+ 
 
 class ODESolver:
   r"""
-  Definition
-  ----------
-  $\text{ode_solver}(f, t_0, t_N, z(t_0)) := z(t_0) + \int_{t_0}^{t_N} f(z(t), t) dt$  # noqa:E501
+  ```math
+
+  $$ \text{ode_solver}(f, t_0, t_N, z(t_0)) := z(t_0) + \int_{t_0}^{t_N} f(z(t), t) dt $$  # noqa:E501
+
   which is exectly the $z(t_N)$.
+
+  ```
   """
 
   def __call__(self, phase_vector_field):
