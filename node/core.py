@@ -56,7 +56,6 @@ def reverse_mode_derivative(ode_solver, network, variables):
 
   @tf.function
   def backward(start_time, end_time, final_state, final_loss_gradient):
-    print(f'tracing: {final_state}, {final_loss_gradient}')
     final_phase_point = [final_state, final_loss_gradient]
     for var in variables:
       zeros = tf.zeros_like(var)
@@ -105,7 +104,7 @@ def get_node_function(solver, t0, fn, signature=None):
     input_signature = None
   else:
     time_signature = tf.TensorSpec(shape=[], dtype=t0.dtype)
-    input_signature = [time_signature, signature]
+    input_signature = [time_signature] + signature
 
   @tf.function(input_signature=input_signature)
   def node_fn(t, x):
@@ -116,7 +115,6 @@ def get_node_function(solver, t0, fn, signature=None):
 
     Returns: PhasePoint
     """
-
     @tf.custom_gradient
     def custom_gradient_fn(*x):
       """For matching the signature of `tf.custom_gradient`
