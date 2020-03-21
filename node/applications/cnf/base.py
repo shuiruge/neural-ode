@@ -3,7 +3,7 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
 from node.core import get_node_function
-from node.solvers import RK4Solver
+from node.solvers.runge_kutta import RK4Solver
 
 
 class CNF(tfp.bijectors.Bijector):
