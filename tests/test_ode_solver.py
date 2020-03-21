@@ -38,3 +38,12 @@ t0 = tf.constant(0.)
 t1 = tf.constant(1.)
 x1 = forward(t0, t1, x0)
 print(x1)
+
+
+# Example 2 variation
+x0 = tf.constant([1.])
+forward = solver(f)
+t1 = tf.constant(0.)
+t0 = tf.constant(1.)
+x1 = forward(t0, t1, x0)
+print(x1)
