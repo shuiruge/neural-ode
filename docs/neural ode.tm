@@ -3,6 +3,10 @@
 <style|generic>
 
 <\body>
+  <section|Adjoint Method>
+
+  <subsection|Trash>
+
   <math|L\<assign\>L<around*|(|z<around*|(|t|)>,t,\<theta\>|)>>
 
   <math|<wide|z|\<dot\>><rsup|\<alpha\>><around*|(|t|)>=:f<rsup|\<alpha\>><around*|(|z<around*|(|t|)>,t,\<theta\>|)>>
@@ -289,10 +293,12 @@
 <\references>
   <\collection>
     <associate|auto-1|<tuple|1|?>>
-    <associate|auto-2|<tuple|1|?>>
-    <associate|auto-3|<tuple|1.1|?>>
-    <associate|auto-4|<tuple|1.2|?>>
-    <associate|auto-5|<tuple|1.3|?>>
+    <associate|auto-2|<tuple|1.1|?>>
+    <associate|auto-3|<tuple|1.2|?>>
+    <associate|auto-4|<tuple|2|?>>
+    <associate|auto-5|<tuple|2.1|?>>
+    <associate|auto-6|<tuple|2.2|?>>
+    <associate|auto-7|<tuple|2.3|?>>
     <associate|axiom of numerical stability|<tuple|6|?>>
     <associate|footnote-1|<tuple|1|?>>
     <associate|footnr-1|<tuple|1|?>>
