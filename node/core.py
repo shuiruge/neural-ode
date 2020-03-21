@@ -75,18 +75,29 @@ def _negate(x):
 
 
 def get_node_function(solver, t0, fn, signature=None):
-  r"""Converts a phase vector field `f(t, x)` to `F(t, x)` which is defined
-  as $ F(t, x) = \int_{t_0}^t f(t, F(t, x)) dt $, where $ F(t_0, x) = x $.
-  That is, the ending phase point at `t` of the flow starting on `x` at `t0`
+  r"""
+
+  ```math
+
+  Let $f$ a phase vector field, then defnine the "node function" $F$ as
+
+  $$ F(t, x) := \int_{t_0}^t f(t, F(t, x)) dt, $$ and
+  
+  $$ F(t_0, x) = x. $$
+  
+  That is, the ending phase point at $t$ of the flow starting on $x$ at $t_0$
   on the phase vector field.
+
+  ```
 
   Args:
     solver: ODESolver
     t0: Time
-      The start time of the phase flow.
+      The start time of the phase flow. The $t_0$ in the definition.
     fn: PhaseVectorField
-    signature: NestList[tf.TensorSpec]
-      The signature of the phase point.
+      The $f$ in the definition.
+    signature: Nest[tf.TensorSpec]
+      The signature of the phase point `x` in the definition.
 
   Returns: PhaseVectorField
   """
