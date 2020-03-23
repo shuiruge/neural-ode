@@ -25,7 +25,6 @@ def neg(x):
 class RungeKuttaStep:
   r"""Computes the :math:`k`s.
 
-
   ```math
 
   Let $N$ the order of Runge Kutta methods. Then this function computes
@@ -57,12 +56,33 @@ class RungeKuttaStep:
 
   def __call__(self, fn, t, x, dt, flip=False):
     """
+    ```math
+
+    If $t_0 > t_1$ in the initial value problem
+
+    \begin{align}
+      \frac{dx}{dt} & = f(t, x) \\
+      x(t_0) = x_0,
+    \end{align}
+
+    then we shall reduce this to the standard initial value problem where
+    $t_1 > t0$ by a flipping trick:
+
+    \begin{align}
+      t & \arrow -t \\
+      dt & \arrow -dt \\
+      f(t) & \arrow f(-t).
+    \end{align}
+
+    ```
+
     Args:
       fn: PhaseVectorField
-      t: tf.Tensor
-      x: tf.Tensor
-      dt: tf.Tensor
+      t: Time
+      x: PhasePoint
+      dt: Time
       flip: bool
+        Whether to use the flipping trick or not.
 
     Returns: tf.Tensor
     """
@@ -194,6 +214,7 @@ class RungeKuttaFehlbergSolver(ODESolver):
     else:
       self.max_dt = tf.convert_to_tensor(max_dt)
     self._rk_step = RungeKuttaStep(a, b)
+    self._diagnostics = RungeKuttaFehlbergDiagnostics()
 
   def __call__(self, fn):
 
@@ -247,6 +268,19 @@ class RungeKuttaFehlbergSolver(ODESolver):
       return x
 
     return forward
+  
+  @property
+  def diagnostics(self):
+    return self._diagnostics
+
+
+class RungeKuttaFehlbergDiagnostics:
+  
+  def __init__(self):
+    self.num_steps = tf.Variable(0, trainable=False)
+    self.num_acceptive = tf.Variable(0, trainable=False)
+    self.succeed = tf.Variable(True, trainable=False)
+    self.total_error = tf.Variable(0., trainable=False)
 
 
 class RK4Solver(RungeKuttaSolver):
