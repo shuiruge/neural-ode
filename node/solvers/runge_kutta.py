@@ -242,13 +242,17 @@ class RungeKuttaFehlbergSolver(ODESolver):
       t = t0
       x = x0
       dt = self.init_dt
+      self._diagnostics.reset()
       while t1 - t > self.min_dt:
+        succeed = 1
+        accepted = 0
         if t < t1 and t + dt > t1:
           dt = t1 - t
         ks = self._rk_step(fn, t, x, dt, flip=flip)
         r = error(dt, *ks)
         # if r < self.tol:  # TODO
         if r < self.tol or dt <= self.min_dt:
+          accepted = 1
           x = add(x, dx(*ks))
           t = t + dt
         delta = 0.84 * tf.pow(self.tol / r, 1 / 4)
@@ -265,10 +269,12 @@ class RungeKuttaFehlbergSolver(ODESolver):
         # instead of raising an error.
         if dt < self.min_dt:
           dt = self.min_dt
+          succeed = 0
+        self._diagnostics.update(accepted, succeed, r)
       return x
 
     return forward
-  
+
   @property
   def diagnostics(self):
     return self._diagnostics
@@ -278,9 +284,22 @@ class RungeKuttaFehlbergDiagnostics:
   
   def __init__(self):
     self.num_steps = tf.Variable(0, trainable=False)
-    self.num_acceptive = tf.Variable(0, trainable=False)
-    self.succeed = tf.Variable(True, trainable=False)
+    self.num_accepted = tf.Variable(0, trainable=False)
+    self.succeed = tf.Variable(1, trainable=False)
     self.total_error = tf.Variable(0., trainable=False)
+
+  def update(self, accepted, succeed, error):
+    self.num_steps += 1
+    self.num_accepted += accepted
+    if succeed == 0:
+      self.succeed = 0
+    self.total_error += error
+  
+  def reset():
+    self.num_steps.assign(0)
+    self.num_accepted.assign(0)
+    self.succeed.assign(1)
+    self.total_error.assign(0.)
 
 
 class RK4Solver(RungeKuttaSolver):
