@@ -242,19 +242,24 @@ class RungeKuttaFehlbergSolver(ODESolver):
       t = t0
       x = x0
       dt = self.init_dt
+      succeed = True
       self._diagnostics.reset()
+
       while t1 - t > self.min_dt:
-        succeed = 1
-        accepted = 0
+        accepted = False
+
         if t < t1 and t + dt > t1:
           dt = t1 - t
+
         ks = self._rk_step(fn, t, x, dt, flip=flip)
         r = error(dt, *ks)
+
         # if r < self.tol:  # TODO
         if r < self.tol or dt <= self.min_dt:
-          accepted = 1
+          accepted = True
           x = add(x, dx(*ks))
           t = t + dt
+
         delta = 0.84 * tf.pow(self.tol / r, 1 / 4)
         if delta < 0.1:
           dt = 0.1 * dt
@@ -269,7 +274,8 @@ class RungeKuttaFehlbergSolver(ODESolver):
         # instead of raising an error.
         if dt < self.min_dt:
           dt = self.min_dt
-          succeed = 0
+          succeed = False
+
         self._diagnostics.update(accepted, succeed, r)
       return x
 
@@ -285,21 +291,33 @@ class RungeKuttaFehlbergDiagnostics:
   def __init__(self):
     self.num_steps = tf.Variable(0, trainable=False)
     self.num_accepted = tf.Variable(0, trainable=False)
-    self.succeed = tf.Variable(1, trainable=False)
+    self.accept_ratio = tf.Variable(0., trainable=False)
+    self.succeed = tf.Variable(True, trainable=False)
     self.total_error = tf.Variable(0., trainable=False)
 
   def update(self, accepted, succeed, error):
-    self.num_steps += 1
-    self.num_accepted += accepted
-    if succeed == 0:
-      self.succeed = 0
-    self.total_error += error
+    self.num_steps.assign_add(1)
+    if accepted:
+      self.num_accepted.assign_add(1)
+    self.accept_ratio.assign(
+        tf.cast(self.num_accepted, self.accept_ratio.dtype) /
+        tf.cast(self.num_steps, self.accept_ratio.dtype))
+    if not succeed:
+      self.succeed.assign(False)
+    self.total_error.assign_add(error)
   
-  def reset():
+  def reset(self):
     self.num_steps.assign(0)
     self.num_accepted.assign(0)
-    self.succeed.assign(1)
+    self.accept_ratio.assign(0.)
+    self.succeed.assign(True)
     self.total_error.assign(0.)
+
+  def __repr__(self):
+    return ('num_steps: {}, num_accepted: {}, accept_ratio: {}, '
+            'succeed: {}, total_error: {}').format(
+                self.num_steps, self.num_accepted, self.accept_ratio,
+                self.succeed, self.total_error)
 
 
 class RK4Solver(RungeKuttaSolver):

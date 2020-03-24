@@ -37,7 +37,7 @@ def test_rk4_solver():
 
 
 def test_rkf56_solver():
-  solver = RKF56Solver(0.1, tol=1e-3, min_dt=1e-2)
+  solver = RKF56Solver(0.01, tol=1e-3, min_dt=1e-2)
 
   # the first example
 
@@ -54,6 +54,7 @@ def test_rkf56_solver():
   t1 = tf.constant(1.)
   x1 = forward(t0, t1, x0)
   print(x1)
+  print(solver.diagnostics)
 
   # the second example
 
@@ -68,6 +69,7 @@ def test_rkf56_solver():
   t0 = tf.constant(1.)
   x1 = forward(t0, t1, x0)
   print(x1)
+  print(solver.diagnostics)
 
 
 print('\ntesting rk4 solver')
