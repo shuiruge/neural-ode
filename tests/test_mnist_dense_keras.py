@@ -2,6 +2,7 @@ r"""C.f. `./test_mnist_dense.py`"""
 
 import numpy as np
 import tensorflow as tf
+from argparse import ArgumentParser
 from node.core import get_node_function
 from node.solvers.runge_kutta import RK4Solver, RKF56Solver
 from node.utils.initializers import GlorotUniform
@@ -11,9 +12,10 @@ from node.utils.initializers import GlorotUniform
 np.random.seed(42)
 tf.random.set_seed(42)
 
-
-SOLVER = 'rk4'
-# SOLVER = 'rkf56'
+PARSER = ArgumentParser()
+PARSER.add_argument('--solver', type=str, default='rk4',
+                    help='in ("rk4", "rkf56")')
+ARGS = PARSER.parse_args()
 
 
 class MyLayer(tf.keras.layers.Layer):
@@ -36,12 +38,12 @@ class MyLayer(tf.keras.layers.Layer):
 
     self._pvf = lambda _, x: self._model(x)
 
-    if SOLVER == 'rk4':
+    if ARGS.solver == 'rk4':
       solver = RK4Solver(self.dt)
-    elif SOLVER == 'rkf56':
+    elif ARGS.solver == 'rkf56':
       solver = RKF56Solver(self.dt, tol=1e-2, min_dt=1e-2)
     else:
-      raise ValueError(f'Unknown solver: {SOLVER}')
+      raise ValueError(f'Unknown solver: "{ARGS.solver}"')
 
     self._node_fn = get_node_function(
         solver, tf.constant(0.), self._pvf)
