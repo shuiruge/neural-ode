@@ -5,23 +5,93 @@
 <\body>
   <section|Adjoint Method>
 
-  <subsection|Trash>
+  Let <math|M> a manifold, and <math|x<around*|(|t|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>,M|)>>
+  a trajectory, obeying
 
-  <math|L\<assign\>L<around*|(|z<around*|(|t|)>,t,\<theta\>|)>>
+  <\equation*>
+    <frac|\<mathd\>x|\<mathd\>t><around*|(|t|)>=f<around*|(|t,x<around*|(|t|)>;\<theta\>|)>,
+  </equation*>
 
-  <math|<wide|z|\<dot\>><rsup|\<alpha\>><around*|(|t|)>=:f<rsup|\<alpha\>><around*|(|z<around*|(|t|)>,t,\<theta\>|)>>
+  and
 
-  <math|\<Rightarrow\>z<rsup|\<alpha\>><around*|(|t+\<epsilon\>|)>=z<rsup|\<alpha\>><around*|(|t|)>+\<epsilon\>f<rsup|\<alpha\>><around*|(|z<around*|(|t|)>,t,\<theta\>|)>>
+  <\equation*>
+    x<around*|(|t<rsub|0>|)>=x<rsub|0>,
+  </equation*>
 
-  <math|\<Rightarrow\><frac|\<partial\>z<rsup|\<beta\>><around*|(|t+\<epsilon\>|)>|\<partial\>z<rsup|\<alpha\>><around*|(|t|)>>=\<delta\><rsup|\<beta\>><rsub|\<alpha\>>+\<epsilon\><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>z<rsup|\<alpha\>><around*|(|t|)>><around*|(|z<around*|(|t|)>,t,\<theta\>|)>>
+  where <math|f\<in\>C<around*|(|\<bbb-R\>\<times\>M,T<rsub|M>|)>>
+  parameterized by <math|\<theta\>>. For <math|\<forall\>t<rsub|1>\<gtr\>t<rsub|0>>,
+  let
 
-  <math|a<rsub|\<alpha\>><around*|(|t|)>\<assign\><frac|\<partial\>L|\<partial\>z<rsup|\<alpha\>><around*|(|t|)>>>
+  <\equation*>
+    x<rsub|1>\<assign\>x<rsub|0>+<big|int><rsub|t<rsub|0>><rsup|t<rsub|1>>f<around*|(|t,x<around*|(|t|)>;\<theta\>|)>\<mathd\>t.
+  </equation*>
 
-  <math|<frac|\<partial\>L|\<partial\>z<rsup|\<alpha\>><around*|(|t|)>>=<frac|\<partial\>L|\<partial\>z<rsup|\<beta\>><around*|(|t+\<epsilon\>|)>><frac|\<partial\>z<rsup|\<beta\>><around*|(|t+\<epsilon\>|)>|\<partial\>z<rsup|\<alpha\>><around*|(|t|)>>>
+  Then
 
-  <math|\<Rightarrow\>a<rsub|\<alpha\>><around*|(|t|)>=a<rsub|\<beta\>><around*|(|t+\<epsilon\>|)><frac|\<partial\>z<rsup|\<beta\>><around*|(|t+\<epsilon\>|)>|\<partial\>z<rsup|\<alpha\>><around*|(|t|)>>=<around*|[|a<rsub|\<beta\>><around*|(|t|)>+\<epsilon\><wide|a|\<dot\>><rsub|\<beta\>><around*|(|t|)>|]><around*|[|\<delta\><rsup|\<beta\>><rsub|\<alpha\>>+\<epsilon\><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>z<rsup|\<alpha\>><around*|(|t|)>><around*|(|z<around*|(|t|)>,t,\<theta\>|)>|]>>
+  <\theorem>
+    <label|adjoint method> Let <math|L\<in\>C<rsup|1><around*|(|M,\<bbb-R\>|)>>,
+    and <math|\<forall\>x<around*|(|t|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>,M|)>>
+    obeying dynamics <math|f<around*|(|t,x;\<theta\>|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>\<times\>M,T<rsub|M>|)>>
+    with initial value <math|x<around*|(|t<rsub|0>|)>=x<rsub|0>>. Denote
 
-  <math|\<Rightarrow\><wide|a|\<dot\>><rsub|\<alpha\>><around*|(|t|)>=-a<rsub|\<beta\>><around*|(|t|)><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>z<rsup|\<alpha\>><around*|(|t|)>><around*|(|z<around*|(|t|)>,t,\<theta\>|)>>
+    <\equation*>
+      L<rsub|x><around*|(|t;t<rsub|0>,x<rsub|0>,\<theta\>|)>\<assign\>L<around*|(|x<around*|(|t;t<rsub|0>,x<rsub|0>,\<theta\>|)>|)>=L<around*|(|x<rsub|0>+<big|int><rsub|t<rsub|0>><rsup|t>f<around*|(|t,x<around*|(|t|)>;\<theta\>|)>|)>,
+    </equation*>
+
+    and XXX
+
+    <\equation*>
+      a<rsub|\<alpha\>><around*|(|\<tau\>|)>\<assign\><frac|\<partial\>L<rsub|x>|\<partial\>x<rsup|\<alpha\>><rsub|0>><around*|(|t;\<tau\>,x<rsub|0>;\<theta\>|)>.
+    </equation*>
+
+    Then we have
+
+    <\equation*>
+      <frac|\<partial\>L<rsub|x>|\<partial\>x<rsup|\<alpha\>><rsub|0>><around*|(|t|)>=-<big|int><rsub|t<rsub|0>><rsup|t>a<rsub|\<beta\>><around*|(|\<tau\>|)><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>x<rsup|\<alpha\>><around*|(|\<tau\>|)>><around*|(|\<tau\>,x<around*|(|\<tau\>|)>;\<theta\>|)>\<mathd\>\<tau\>
+    </equation*>
+
+    and
+
+    <\equation*>
+      <frac|\<partial\>L<rsub|x>|\<partial\>\<theta\>><around*|(|t|)>=-<big|int><rsub|t<rsub|0>><rsup|t>a<rsub|\<beta\>><around*|(|\<tau\>|)><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>\<theta\>><around*|(|\<tau\>,x<around*|(|\<tau\>|)>;\<theta\>|)>\<mathd\>\<tau\>
+    </equation*>
+  </theorem>
+
+  <\proof>
+    Suppose the <math|x<around*|(|t|)>> is layerized, the <math|L> depends on
+    the variables (inputs and model parameters) on the <math|i>th layer can
+    be regarded as the loss of a new model by truncating the original at the
+    <math|i>th layer, which we call <math|L<rsub|i><around*|(|z<rsub|i>|)>>.
+
+    <\align>
+      <tformat|<table|<row|<cell|<frac|\<partial\>L<rsub|i>|\<partial\>x<rsup|\<alpha\>><rsub|i>><around*|(|x<rsub|i>|)>>|<cell|=<frac|\<partial\>L<rsub|i+1>|\<partial\>x<rsup|\<beta\>><rsub|i+1>><around*|(|x<rsub|i+1>|)><frac|\<partial\>x<rsup|\<beta\>><rsub|i+1>|\<partial\>x<rsup|\<alpha\>><rsub|i>><around*|(|x<rsub|i>|)>>>|<row|<cell|>|<cell|=<frac|\<partial\>L<rsub|i+1>|\<partial\>x<rsup|\<beta\>><rsub|1>><around*|(|x<rsub|i+1>|)><frac|\<partial\>|\<partial\>x<rsup|\<alpha\>><rsub|i>><around*|(|x<rsub|i><rsup|\<beta\>>+f<rsup|\<beta\>><around*|(|t<rsub|i>,x<rsub|i>;\<theta\>|)>\<Delta\>t|)>>>|<row|<cell|>|<cell|=<frac|\<partial\>L<rsub|i+1>|\<partial\>x<rsup|\<alpha\>><rsub|i+1>><around*|(|x<rsub|i+1>|)>+<frac|\<partial\>L<rsub|i+1>|\<partial\>x<rsup|\<beta\>><rsub|i+1>><around*|(|x<rsub|i+1>|)>\<partial\><rsub|\<alpha\>>f<rsup|\<beta\>><around*|(|t<rsub|i>,x<rsub|i>;\<theta\>|)>\<Delta\>t.>>>>
+    </align>
+
+    This hints that
+
+    <\equation*>
+      <frac|\<mathd\>|\<mathd\>t><frac|\<partial\>L<around*|(|x<around*|(|t<rsub|1>|)>|)>|\<partial\>x<rsup|\<alpha\>><around*|(|t|)>>=-<frac|\<partial\>L<around*|(|x<around*|(|t<rsub|1>|)>|)>|\<partial\>x<rsup|\<beta\>><around*|(|t|)>><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>x<rsup|\<alpha\>><around*|(|t|)>><around*|(|t,x<around*|(|t|)>;\<theta\>|)>.
+    </equation*>
+
+    \;
+
+    Varing <math|\<theta\>> will vary the
+    <math|L<rsub|i><around*|(|x<rsub|i>|)>> from two aspects, the effect from
+    <math|\<partial\>L<rsub|i+1>/\<partial\>\<theta\>> and the
+    <math|\<Delta\>x<rsub|i+1>> caused by <math|\<Delta\>\<theta\>>.
+
+    <\align>
+      <tformat|<table|<row|<cell|<frac|\<partial\>L<rsub|i>|\<partial\>\<theta\>><around*|(|x<rsub|i>|)>>|<cell|=<frac|\<partial\>L<rsub|i+1>|\<partial\>\<theta\>><around*|(|x<rsub|i+1>|)>+<frac|\<partial\>L<rsub|i+1>|\<partial\>x<rsub|i+1>><frac|\<partial\>x<rsub|i+1>|\<partial\>\<theta\>>>>|<row|<cell|>|<cell|=<frac|\<partial\>L<rsub|i+1>|\<partial\>\<theta\>><around*|(|x<rsub|i+1>|)>+<frac|\<partial\>L<rsub|i+1>|\<partial\>x<rsub|i+1>><frac|\<partial\>|\<partial\>\<theta\>><around*|(|x<rsub|i><rsup|\<beta\>>+f<rsup|\<beta\>><around*|(|t<rsub|i>,x<rsub|i>;\<theta\>|)>\<Delta\>t|)>>>|<row|<cell|>|<cell|=<frac|\<partial\>L<rsub|i+1>|\<partial\>\<theta\>><around*|(|x<rsub|i+1>|)>+<frac|\<partial\>L<rsub|i+1>|\<partial\>x<rsub|i+1>><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>\<theta\>><around*|(|t<rsub|i>,x<rsub|i>;\<theta\>|)>\<Delta\>t.>>>>
+    </align>
+
+    This hints that
+
+    <\equation*>
+      <frac|\<mathd\>|\<mathd\>t><frac|\<partial\>L<around*|(|x<around*|(|t<rsub|1>|)>|)>|\<partial\>\<theta\>>=-<frac|\<partial\>L<around*|(|x<around*|(|t<rsub|1>|)>|)>|\<partial\>x<rsup|\<alpha\>><around*|(|t|)>><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>\<theta\>><around*|(|t,x<around*|(|t|)>,\<theta\>|)>.
+    </equation*>
+  </proof>
+
+  <subsection|Calculation of <math|\<partial\>L/\<partial\>x>>
 
   <subsection|Calculation of <math|\<partial\>L/\<partial\>\<theta\>>>
 
@@ -292,6 +362,7 @@
 
 <\references>
   <\collection>
+    <associate|adjoint method|<tuple|1|?>>
     <associate|auto-1|<tuple|1|?>>
     <associate|auto-2|<tuple|1.1|?>>
     <associate|auto-3|<tuple|1.2|?>>
@@ -299,37 +370,46 @@
     <associate|auto-5|<tuple|2.1|?>>
     <associate|auto-6|<tuple|2.2|?>>
     <associate|auto-7|<tuple|2.3|?>>
-    <associate|axiom of numerical stability|<tuple|6|?>>
+    <associate|auto-8|<tuple|2.3|?>>
+    <associate|axiom of numerical stability|<tuple|7|?>>
     <associate|footnote-1|<tuple|1|?>>
     <associate|footnr-1|<tuple|1|?>>
-    <associate|homogenity|<tuple|9|?>>
-    <associate|hopfield dynamics|<tuple|2|?>>
+    <associate|homogenity|<tuple|10|?>>
+    <associate|hopfield dynamics|<tuple|3|?>>
   </collection>
 </references>
 
 <\auxiliary>
   <\collection>
     <\associate|toc>
-      <with|par-left|<quote|1tab>|1<space|2spc>Calculation of
-      <with|mode|<quote|math>|\<partial\>L/\<partial\>\<theta\>>
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|1<space|2spc>Adjoint
+      Method> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-1><vspace|0.5fn>
+
+      <with|par-left|<quote|1tab>|1.1<space|2spc>Trash
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-1>>
+      <no-break><pageref|auto-2>>
 
-      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|1<space|2spc>Continuum
-      of Hopfield> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-2><vspace|0.5fn>
-
-      <with|par-left|<quote|1tab>|1.1<space|2spc>Hopfield Network
+      <with|par-left|<quote|1tab>|1.2<space|2spc>Calculation of
+      <with|mode|<quote|math>|\<partial\>L/\<partial\>\<theta\>>
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-3>>
 
-      <with|par-left|<quote|1tab>|1.2<space|2spc>Continuum
-      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-4>>
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|2<space|2spc>Continuum
+      of Hopfield> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-4><vspace|0.5fn>
 
-      <with|par-left|<quote|1tab>|1.3<space|2spc>General Form
+      <with|par-left|<quote|1tab>|2.1<space|2spc>Hopfield Network
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-5>>
+
+      <with|par-left|<quote|1tab>|2.2<space|2spc>Continuum
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-6>>
+
+      <with|par-left|<quote|1tab>|2.3<space|2spc>General Form
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-7>>
     </associate>
   </collection>
 </auxiliary>
