@@ -226,12 +226,42 @@ class SelfAttention(MultiHeadAttention):
 
 
 def get_albert_dynamics(self_attention, feed_forward):
+  r"""
+  ```math
+
+  Let $f_{SA}(.)$ the self-attention (without mask) and $f_{FF}(.)$ the
+  feed-forward. Then the ALBERT dynamics is
+  
+  \begin{align}
+
+    \frac{dx_1^a}{dt} & = \
+      \nabla_b \text{layernrom}^a (x_2) f_{FF}^b (x_2); \\
+
+    \frac{dx_2^a}{dt} & = \
+      \nabla_b \text{layernrom}^a (x_1) f_{SA}^b (x_1).
+
+  \end{align}
+
+  ```
+
+  Args:
+    self_attention: Callable[[tf.Tensor], tf.Tensor]
+    feed_forward: Callable[[tf.Tensor], tf.Tensor]
+      The input tensors of `self_attention` and `feed_forward` share the same
+        shape and dtype. The shape is `[..., sequence_length, depth]`.
+
+  Returns: PhaseVectorField
+    The phase space consists two tensors, both share the same and dtype as the
+    inputs of the `self_attention` and `feed_forward`.
+  """
 
   @tf.function
   def albert_dynamics(t, x):
     x1, x2 = x
 
     def layer_norm_vjp(x, y):
+      # \sum_b \frac{ \partial \text{layernrom}^a }{ \partial x^b } y^b
+      # (notice the symmetry of the gradient of layer-norm)
       with tf.GradientTape() as g:
         g.watch(x)
         ln = layer_norm(x)
