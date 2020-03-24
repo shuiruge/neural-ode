@@ -230,7 +230,20 @@ def get_albert_dynamics(self_attention, feed_forward):
   ```math
 
   Let $f_{SA}(.)$ the self-attention (without mask) and $f_{FF}(.)$ the
-  feed-forward. Then the ALBERT dynamics is
+  feed-forward. Then the ALBERT update is
+
+  \begin{align}
+
+    z_{t+1}^a & = \
+      \text{layernorm}^a \left( x_t + \Delta t f_{SA} (x_t) \right) \\
+
+    x_{t+1}^a & = \
+      \text{layernorm}^a \left( z_t + \Delta t f_{FF}(z_t) \right).
+
+  \end{align}
+
+  If $\Delta t \rightarrow 0$, and re-denote $x_t \rightarrow x_1(t)$,
+  $z_t \rightarrow x_2(t)$, then we gain the dynamics
   
   \begin{align}
 
