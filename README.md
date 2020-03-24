@@ -8,11 +8,11 @@ Neural ODE.
 - [X] Stable CNN NODE for MNIST dataset.
 - [X] Generic function that computes the trajectory
 - [X] Visualization utils (How to visualize high dimensional trajectory).
-- [X] Generalizing the input type from `tf.Tensor` to `Sequence[tf.Tensor]`.
+- [X] Generalizing the input type from `tf.Tensor` to `Nest[tf.Tensor]`.
 - [X] Study the fix point for the trained stable NODE.
 - [X] Adaptive numeric precision in solver.
 - [X] CNF.
 - [X] Convert to TF code style.
+- [X] Add adaptive solvers.
+- [X] Re-write ALBERT with NODE.
 - [ ] Adaptive time interval.
-- [ ] Add adaptive solvers.
-- [ ] Re-write ALBERT with NODE.
