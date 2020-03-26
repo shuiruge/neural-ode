@@ -29,31 +29,26 @@
   Then
 
   <\theorem>
-    <label|adjoint method> Let <math|L\<in\>C<rsup|1><around*|(|M,\<bbb-R\>|)>>,
+    <label|adjoint method> Let <math|<with|math-font|cal|C>\<in\>C<rsup|1><around*|(|M,\<bbb-R\>|)>>,
     and <math|\<forall\>x<around*|(|t|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>,M|)>>
     obeying dynamics <math|f<around*|(|t,x;\<theta\>|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>\<times\>M,T<rsub|M>|)>>
     with initial value <math|x<around*|(|t<rsub|0>|)>=x<rsub|0>>. Denote
 
     <\equation*>
-      L<rsub|x><around*|(|t;t<rsub|0>,x<rsub|0>,\<theta\>|)>\<assign\>L<around*|(|x<around*|(|t;t<rsub|0>,x<rsub|0>,\<theta\>|)>|)>=L<around*|(|x<rsub|0>+<big|int><rsub|t<rsub|0>><rsup|t>f<around*|(|t,x<around*|(|t|)>;\<theta\>|)>|)>,
+      L\<assign\><with|math-font|cal|C><around*|(|x<rsub|0>+<big|int><rsub|t<rsub|0>><rsup|t<rsub|1>>f<around*|(|\<tau\>,x<around*|(|\<tau\>|)>;\<theta\>|)>\<mathd\>\<tau\>|)>.
     </equation*>
 
-    and XXX
+    Then we have, for <math|\<forall\>t\<in\><around*|[|t<rsub|0>,t<rsub|1>|]>>
+    given,
 
     <\equation*>
-      a<rsub|\<alpha\>><around*|(|\<tau\>|)>\<assign\><frac|\<partial\>L<rsub|x>|\<partial\>x<rsup|\<alpha\>><rsub|0>><around*|(|t;\<tau\>,x<rsub|0>;\<theta\>|)>.
-    </equation*>
-
-    Then we have
-
-    <\equation*>
-      <frac|\<partial\>L<rsub|x>|\<partial\>x<rsup|\<alpha\>><rsub|0>><around*|(|t|)>=-<big|int><rsub|t<rsub|0>><rsup|t>a<rsub|\<beta\>><around*|(|\<tau\>|)><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>x<rsup|\<alpha\>><around*|(|\<tau\>|)>><around*|(|\<tau\>,x<around*|(|\<tau\>|)>;\<theta\>|)>\<mathd\>\<tau\>
+      <frac|\<partial\>L|\<partial\>x<around*|(|t|)>>=<frac|\<partial\>L|\<partial\>x<rsub|1>>-<big|int><rsub|t><rsup|t<rsub|1>><frac|\<partial\>L|\<partial\>x<rsup|\<beta\>><around*|(|\<tau\>|)>><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>x<rsup|\<alpha\>><around*|(|\<tau\>|)>><around*|(|\<tau\>,x<around*|(|\<tau\>|)>;\<theta\>|)>\<mathd\>\<tau\>,
     </equation*>
 
     and
 
     <\equation*>
-      <frac|\<partial\>L<rsub|x>|\<partial\>\<theta\>><around*|(|t|)>=-<big|int><rsub|t<rsub|0>><rsup|t>a<rsub|\<beta\>><around*|(|\<tau\>|)><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>\<theta\>><around*|(|\<tau\>,x<around*|(|\<tau\>|)>;\<theta\>|)>\<mathd\>\<tau\>
+      <frac|\<partial\>L|\<partial\>\<theta\>>=-<big|int><rsub|t<rsub|0>><rsup|t<rsub|1>><frac|\<partial\>L|\<partial\>x<rsup|\<beta\>><around*|(|\<tau\>|)>><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>\<theta\>><around*|(|\<tau\>,x<around*|(|\<tau\>|)>;\<theta\>|)>\<mathd\>\<tau\>.
     </equation*>
   </theorem>
 
@@ -70,7 +65,13 @@
     This hints that
 
     <\equation*>
-      <frac|\<mathd\>|\<mathd\>t><frac|\<partial\>L<around*|(|x<around*|(|t<rsub|1>|)>|)>|\<partial\>x<rsup|\<alpha\>><around*|(|t|)>>=-<frac|\<partial\>L<around*|(|x<around*|(|t<rsub|1>|)>|)>|\<partial\>x<rsup|\<beta\>><around*|(|t|)>><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>x<rsup|\<alpha\>><around*|(|t|)>><around*|(|t,x<around*|(|t|)>;\<theta\>|)>.
+      <frac|\<mathd\>|\<mathd\>t><frac|\<partial\>L|\<partial\>x<rsup|\<alpha\>><around*|(|t|)>>=-<frac|\<partial\>L|\<partial\>x<rsup|\<beta\>><around*|(|t|)>><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>x<rsup|\<alpha\>><around*|(|t|)>><around*|(|t,x<around*|(|t|)>;\<theta\>|)>.
+    </equation*>
+
+    The initial value is <math|\<partial\>L/\<partial\>x<rsub|1>>. Thus
+
+    <\equation*>
+      <frac|\<partial\>L|\<partial\>x<around*|(|t|)>>=<frac|\<partial\>L|\<partial\>x<rsub|1>>-<big|int><rsub|t><rsup|t<rsub|1>><frac|\<partial\>L|\<partial\>x<rsup|\<beta\>><around*|(|\<tau\>|)>><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>x<rsup|\<alpha\>><around*|(|\<tau\>|)>><around*|(|\<tau\>,x<around*|(|\<tau\>|)>;\<theta\>|)>\<mathd\>\<tau\>.
     </equation*>
 
     \;
@@ -87,36 +88,16 @@
     This hints that
 
     <\equation*>
-      <frac|\<mathd\>|\<mathd\>t><frac|\<partial\>L<around*|(|x<around*|(|t<rsub|1>|)>|)>|\<partial\>\<theta\>>=-<frac|\<partial\>L<around*|(|x<around*|(|t<rsub|1>|)>|)>|\<partial\>x<rsup|\<alpha\>><around*|(|t|)>><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>\<theta\>><around*|(|t,x<around*|(|t|)>,\<theta\>|)>.
+      <frac|\<mathd\>|\<mathd\>t><frac|\<partial\>L|\<partial\>\<theta\>>=-<frac|\<partial\>L|\<partial\>x<rsup|\<alpha\>><around*|(|t|)>><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>\<theta\>><around*|(|t,x<around*|(|t|)>,\<theta\>|)>.
+    </equation*>
+
+    The initial value is <math|0> since <math|<with|math-font|cal|C><around*|(|.|)>>
+    is explicitly independent on <math|\<theta\>>. Thus
+
+    <\equation*>
+      <frac|\<partial\>L|\<partial\>\<theta\>>=-<big|int><rsub|t<rsub|0>><rsup|t><frac|\<partial\>L|\<partial\>x<rsup|\<beta\>><around*|(|\<tau\>|)>><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>\<theta\>><around*|(|\<tau\>,x<around*|(|\<tau\>|)>;\<theta\>|)>\<mathd\>\<tau\>.
     </equation*>
   </proof>
-
-  <subsection|Calculation of <math|\<partial\>L/\<partial\>x>>
-
-  <subsection|Calculation of <math|\<partial\>L/\<partial\>\<theta\>>>
-
-  Suppose the model is layerized, the loss depends on the variables (inputs
-  and model parameters) on the <math|i>th layer can be regarded as the loss
-  of a <with|color|blue|<with|color|red|new>> model by truncating the
-  original at the <math|i>th layer, which we call
-  <math|L<rsub|i><around*|(|z<rsub|i>|)>>. Varing <math|\<theta\>> will vary
-  the <math|L<rsub|0><around*|(|z<rsub|0>|)>> from two aspects, the effect
-  from <math|dL<rsub|1>/d\<theta\>> and the <math|\<Delta\>z<rsub|1>> caused
-  by <math|\<Delta\>\<theta\>>.
-
-  <math|<frac|dL<rsub|0>|d\<theta\>><around*|(|z<rsub|0>|)>=<frac|dL<rsub|1>|d\<theta\>><around*|(|z<rsub|1>|)>+<frac|dL<rsub|1>|dz<rsub|1>><frac|\<partial\>z<rsub|1>|\<partial\>\<theta\>>>.
-
-  The same relation holds for any <math|i>, by simply considering a truncated
-  model,
-
-  <math|<frac|dL<rsub|i>|d\<theta\>><around*|(|z<rsub|0>|)>=<frac|dL<rsub|i+1>|d\<theta\>><around*|(|z<rsub|i+1>|)>+<frac|dL<rsub|i+1>|dz<rsub|i+1>><frac|\<partial\>z<rsub|i+1>|\<partial\>\<theta\>>>.
-
-  Thus we have, recursely,
-
-  <math|<tabular|<tformat|<table|<row|<cell|<frac|dL<rsub|0>|d\<theta\>><around*|(|z<rsub|0>|)>>|<cell|=>|<cell|<frac|dL<rsub|1>|d\<theta\>><around*|(|z<rsub|1>|)>+<frac|dL<rsub|1>|dz<rsub|1>><frac|\<partial\>z<rsub|1>|\<partial\>\<theta\>>>>|<row|<cell|>|<cell|=>|<cell|<around*|[|<frac|dL<rsub|2>|d\<theta\>><around*|(|z<rsub|1>|)>+<frac|dL<rsub|2>|dz<rsub|2>><frac|\<partial\>z<rsub|2>|\<partial\>\<theta\>>|]>+<frac|dL<rsub|1>|dz<rsub|1>><frac|\<partial\>z<rsub|1>|\<partial\>\<theta\>>>>|<row|<cell|>|<cell|=>|<cell|<frac|dL<rsub|2>|d\<theta\>><around*|(|z<rsub|1>|)>+<frac|dL<rsub|2>|dz<rsub|2>><frac|\<partial\>z<rsub|2>|\<partial\>\<theta\>>+<frac|dL<rsub|1>|dz<rsub|1>><frac|\<partial\>z<rsub|1>|\<partial\>\<theta\>>>>|<row|<cell|>|<cell|=>|<cell|\<ldots\>.>>|<row|<cell|>|<cell|=>|<cell|<frac|dL<rsub|N>|d\<theta\>><around*|(|z<rsub|1>|)>+<big|sum><rsub|i=1><rsup|N><frac|dL<rsub|i>|dz<rsub|i>><frac|\<partial\>z<rsub|i>|\<partial\>\<theta\>>.>>>>>>
-
-  By <math|z<rsub|i+1><around*|(|t|)>=z<rsub|i><around*|(|t|)>+\<epsilon\>f<around*|(|z<rsub|i><around*|(|t|)>,t;\<theta\>|)>>,
-  <math|\<partial\>z<rsub|i>/\<partial\>\<theta\>=\<epsilon\>\<partial\>f<around*|(|z<rsub|i>,t;\<theta\>|)>/\<partial\>\<theta\>>
 
   <section|Continuum of Hopfield>
 
@@ -364,13 +345,12 @@
   <\collection>
     <associate|adjoint method|<tuple|1|?>>
     <associate|auto-1|<tuple|1|?>>
-    <associate|auto-2|<tuple|1.1|?>>
-    <associate|auto-3|<tuple|1.2|?>>
-    <associate|auto-4|<tuple|2|?>>
-    <associate|auto-5|<tuple|2.1|?>>
+    <associate|auto-2|<tuple|2|?>>
+    <associate|auto-3|<tuple|2.1|?>>
+    <associate|auto-4|<tuple|2.2|?>>
+    <associate|auto-5|<tuple|2.3|?>>
     <associate|auto-6|<tuple|2.2|?>>
     <associate|auto-7|<tuple|2.3|?>>
-    <associate|auto-8|<tuple|2.3|?>>
     <associate|axiom of numerical stability|<tuple|7|?>>
     <associate|footnote-1|<tuple|1|?>>
     <associate|footnr-1|<tuple|1|?>>
@@ -386,7 +366,8 @@
       Method> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-1><vspace|0.5fn>
 
-      <with|par-left|<quote|1tab>|1.1<space|2spc>Trash
+      <with|par-left|<quote|1tab>|1.1<space|2spc>Calculation of
+      <with|mode|<quote|math>|\<partial\>L/\<partial\>x>
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-2>>
 
