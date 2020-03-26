@@ -2,7 +2,6 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from matplotlib import animation
-from node.utils.ops import swapaxes
 
 
 def tracer(solver, fn):
@@ -45,7 +44,7 @@ def tracer(solver, fn):
       i += 1
       xs = xs.write(i, x)
     trajectory = xs.stack()  # [B, T] + E
-    return swapaxes(trajectory, 0, 1)  # [T, B] + E
+    return trajectory
 
   return trace
 
