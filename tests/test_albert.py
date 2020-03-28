@@ -1,8 +1,9 @@
 import tensorflow as tf
 from argparse import ArgumentParser
-from node.applications.nlp.albert import SelfAttention, get_albert_dynamics
 from node.core import get_node_function
 from node.solvers.runge_kutta import RK4Solver, RKF56Solver
+from node.applications.nlp.albert import get_albert_dynamics
+from node.applications.nlp.utils import SelfAttention
 
 
 PARSER = ArgumentParser()
@@ -49,14 +50,14 @@ else:
   raise ValueError(f'Unknown solver: "{ARGS.solver}"')
 
 signature = [[tf.TensorSpec(shape=[None, None, ARGS.d_model], dtype=tf.float32),
-              tf.TensorSpec(shape=[None, None, 1], dtype=tf.float32),
+              tf.TensorSpec(shape=[None, 1, None, 1], dtype=tf.float32),
               tf.TensorSpec(shape=[None, None, ARGS.d_model], dtype=tf.float32)]]
 
 node_fn = get_node_function(solver, t0, albert_dynamics, signature=signature)
 
 t1 = tf.constant(1.)
 x0 = [tf.random.uniform(shape=[32, 16, ARGS.d_model]),
-      tf.zeros(shape=[32, 16]),
+      tf.zeros(shape=[32, 1, 16, 1]),
       tf.random.uniform(shape=[32, 16, ARGS.d_model])]
 x1 = node_fn(t1, x0)
 print(f'\nOutput shapes: {[_.shape for _ in x1]}')
