@@ -222,3 +222,98 @@ class SelfAttention(MultiHeadAttention):
     """
     x, mask = inputs
     return super().call([x, x, x, mask])
+
+
+class PositionalEncoding(tf.keras.layers.Layer):
+  """
+  Experiments:
+    For making the (embedding) input and the positional encoding the same
+    order, the input is layer-normalized, initially to unit std, which is
+    the same order as the positional encoding. The kernel and bias parameters
+    in the layer-normalization help determine the weight of the positional
+    information by training.
+
+  Args:
+    d_model: int
+      Dimension of the model.
+    max_position: int
+      Any number that is greater than the max sequence length of the inputs
+      of the model.
+  """
+
+  def __init__(self, d_model, max_position):
+    super().__init__()
+    self.max_position = max_position
+
+    self._pos_encoding = positional_encoding(max_position, d_model)
+    self._factor = tf.math.sqrt(tf.cast(d_model, self.dtype))
+    self._layer_norm = tf.keras.layers.LayerNormalization()
+
+  def call(self, x):
+    """
+    Args:
+      x: tf.Tensor
+        Shape: [..., sequence_length, x_dims].
+
+    Returns: tf.Tensor
+      The same shape and dtype as the `x`.
+    """
+    seq_len = tf.shape(x)[1]
+    # if seq_len > self.max_position:
+    #   raise ValueError('The sequence length of input shall be no greater '
+    #                    f'than max position {self.max_position}, '
+    #                    f'but found {seq_len}.')
+    pos_enc = self._pos_encoding[:seq_len, :]
+
+    broadcast_shape = tf.concat(
+        [tf.ones([tf.rank(x) - 2], 'int32'), tf.shape(x)[-2:]],
+        axis=0)
+    pos_enc = tf.reshape(pos_enc, broadcast_shape)
+    # return x * self._factor + pos_enc
+    # return x + pos_enc  # XXX: test!
+    return self._layer_norm(x) + pos_enc  # XXX: test!
+
+
+def get_angles(pos, i, d_model):
+  """Auxillary function of `PositionalEncoding`.
+
+  Args:
+    position: int
+    i: int
+    d_model: int
+
+  Returns: float
+  """
+  pos = tf.cast(pos, 'float32')
+  i = tf.cast(i, 'int32')
+  d_model = tf.cast(d_model, 'float32')
+  p = tf.cast(2 * (i // 2), 'float32') / d_model
+  angle_rates = 1. / tf.math.pow(10000., p)
+  return pos * angle_rates
+
+
+def positional_encoding(position, d_model):
+  """Auxillary function of `PositionalEncoding`.
+
+  Args:
+    position: int
+    d_model: int
+
+  Returns: tf.Tensor
+    Shape [position, d_model]
+  """
+  # [position, d_model]
+  angles = get_angles(
+      tf.range(position)[:, tf.newaxis],
+      tf.range(d_model)[tf.newaxis, :],
+      d_model)
+
+  # apply sin to even indices in the array; 2i
+  sin = tf.sin(angles[:, 0::2])
+  # apply cos to odd indices in the array; 2i+1
+  cos = tf.cos(angles[:, 1::2])
+
+  # [position, d_model]
+  pos_encoding = tf.reshape(tf.stack([sin, cos], axis=-1),
+                            [position, d_model])
+  return pos_encoding
