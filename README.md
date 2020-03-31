@@ -15,4 +15,5 @@ Neural ODE.
 - [X] Convert to TF code style.
 - [X] Add adaptive solvers.
 - [X] Re-write ALBERT with NODE.
+- [ ] Time series forecasting via ALBERT.
 - [ ] Adaptive time interval.

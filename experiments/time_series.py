@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -98,7 +99,7 @@ class AlbertModel(tf.keras.Model):
     elif solver == 'rkf56':
       solver = rk.RKF56Solver(dt=1e-2, tol=1e-2, min_dt=1e-2)
     else:
-      raise ValueError('XXX')
+      pass
 
     self._solver = solver
     self._embedding_layer = EmbeddingLayer(depth, max_sequence_length)
@@ -148,24 +149,42 @@ def load_data():
   df['hour'] = df['Date Time'].apply(lambda x: x.hour)
   df['minute'] = df['Date Time'].apply(lambda x: x.minute)
 
+  # Use mean values as the input and output features for reducing
+  # computation consumption:
+
+  group_key = ['year', 'month', 'day', 'hour']
+
+  df = df.merge(
+      df.groupby(group_key)['T (degC)'].mean().rename('mean T (degC)'),
+      on=group_key)
+
+  df = df.merge(
+      df.groupby(group_key)['p (mbar)'].mean().rename('mean p (mbar)'),
+      on=group_key)
+
+  df = df.merge(
+      df.groupby(group_key)['rho (g/m**3)'].mean().rename('mean rho (g/m**3)'),
+      on=group_key)
+
   return df
 
 def get_training_and_test_features(data):
-  input_features = ['year', 'month', 'day', 'hour',
-                    'p (mbar)', 'rho (g/m**3)']
-  target_feature = ['T (degC)']
+  data.index = data['Date Time']
+  input_features = ['month', 'day', 'hour',
+                    'mean p (mbar)', 'mean rho (g/m**3)']
+  target_feature = ['mean T (degC)']
   features = data[input_features + target_feature]
-  features.index = data['Date Time']
+  features = features.drop_duplicates()
 
   dataset = features.values
-  train_split = 300000
+  train_split = int(0.8 * len(dataset))
 
   data_mean = dataset[:train_split].mean(axis=0)
   data_std = dataset[:train_split].std(axis=0)
   dataset = (dataset - data_mean) / data_std
 
-  size = 720
-  step = 6
+  size = 24
+  step = 1
   x_train, y_train = multivariate_data(
       dataset[:, :-1], dataset[:, -1], 0, train_split, size, step)
   x_test, y_test = multivariate_data(
@@ -173,18 +192,18 @@ def get_training_and_test_features(data):
   return (x_train, y_train, x_test, y_test)
 
 
-df = load_data()
-x_train, y_train, x_test, y_test = get_training_and_test_features(df)
+data = load_data()
+x_train, y_train, x_test, y_test = get_training_and_test_features(data)
 depth = 32
 num_train_data, sequence_length = x_train.shape[:2]
 mask_train = np.zeros(shape=[num_train_data, 1, sequence_length, 1])
 
-model = AlbertModel(depth, num_heads=4, dff=128, output_dim=1, t=1.)
+model = AlbertModel(depth, num_heads=4, dff=128, output_dim=1, t=1.,
+                    solver=rk.RK4Solver(0.1))
 model.compile(loss='mae')
-
-model.fit([x_train, mask_train], y_train, epochs=10)
 
 num_test_data = x_test.shape[0]
 mask_test = np.zeros(shape=[num_test_data, 1, sequence_length, 1])
-model.evaluate([x_test, mask_test], y_test)
 
+model.fit([x_train, mask_train], y_train, epochs=10,
+          validation_data=([x_test, mask_test], y_test))
