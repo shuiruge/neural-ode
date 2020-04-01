@@ -1,3 +1,13 @@
+"""
+Use ALBERT dynamics to do time series forecasting.
+
+The dataset and baseline model is
+[here](https://tensorflow.google.cn/tutorials/structured_data/time_series).
+
+Herein, we will not use the positional encoding. Instead, we add features
+"month", "day", and "hour" for indicating the time (i.e. sequential position).
+"""
+
 import os
 import pandas as pd
 import numpy as np
@@ -149,32 +159,14 @@ def load_data():
   df['hour'] = df['Date Time'].apply(lambda x: x.hour)
   df['minute'] = df['Date Time'].apply(lambda x: x.minute)
 
-  # Use mean values as the input and output features for reducing
-  # computation consumption:
-
-  group_key = ['year', 'month', 'day', 'hour']
-
-  df = df.merge(
-      df.groupby(group_key)['T (degC)'].mean().rename('mean T (degC)'),
-      on=group_key)
-
-  df = df.merge(
-      df.groupby(group_key)['p (mbar)'].mean().rename('mean p (mbar)'),
-      on=group_key)
-
-  df = df.merge(
-      df.groupby(group_key)['rho (g/m**3)'].mean().rename('mean rho (g/m**3)'),
-      on=group_key)
-
   return df
 
 def get_training_and_test_features(data):
-  data.index = data['Date Time']
-  input_features = ['month', 'day', 'hour',
-                    'mean p (mbar)', 'mean rho (g/m**3)']
-  target_feature = ['mean T (degC)']
+  input_features = ['year', 'month', 'day', 'hour', 'minute',
+                    'p (mbar)', 'rho (g/m**3)']
+  target_feature = ['T (degC)']
   features = data[input_features + target_feature]
-  features = features.drop_duplicates()
+  features.index = data['Date Time']
 
   dataset = features.values
   train_split = int(0.8 * len(dataset))
@@ -183,8 +175,8 @@ def get_training_and_test_features(data):
   data_std = dataset[:train_split].std(axis=0)
   dataset = (dataset - data_mean) / data_std
 
-  size = 24
-  step = 1
+  size = 1 * 24 * 6
+  step = 6
   x_train, y_train = multivariate_data(
       dataset[:, :-1], dataset[:, -1], 0, train_split, size, step)
   x_test, y_test = multivariate_data(
@@ -194,6 +186,7 @@ def get_training_and_test_features(data):
 
 data = load_data()
 x_train, y_train, x_test, y_test = get_training_and_test_features(data)
+print(x_train.shape, y_train.shape)
 depth = 32
 num_train_data, sequence_length = x_train.shape[:2]
 mask_train = np.zeros(shape=[num_train_data, 1, sequence_length, 1])
@@ -207,3 +200,12 @@ mask_test = np.zeros(shape=[num_test_data, 1, sequence_length, 1])
 
 model.fit([x_train, mask_train], y_train, epochs=10,
           validation_data=([x_test, mask_test], y_test))
+
+"""
+Epoch 1/10
+336440/336440 [==============================] - 2668s 8ms/sample - loss: 0.0401 - val_loss: 0.0359
+Epoch 2/10
+336440/336440 [==============================] - 2677s 8ms/sample - loss: 0.0263 - val_loss: 0.0391
+Epoch 3/10
+336440/336440 [==============================] - 2226s 7ms/sample - loss: 0.0240 - val_loss: 0.0315
+"""
