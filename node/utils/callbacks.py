@@ -1,119 +1,103 @@
 import tensorflow as tf
 
 
-class Inspector(tf.keras.callbacks.Callback):
-  r"""Inspects the model in the training process.
+class InspectResult:
 
-  Args:
-    skip_step: int
-      Logging the weights values per `skip_step` steps (batches).
-  """
-
-  def __init__(self, skip_step=10, **kwargs):
-    super().__init__(**kwargs)
-    self.skip_step = skip_step
-
-    self.logs = []  # type: [dict]
-
-  def inspect(self):
-    """Function that produces the values to be inspected. These values shall be
-    explicit like `np.array`, instead of abstract objects like `tf.Tensor`.
-
-    Returns: dict
-    """
-    return NotImplemented
-
-  def on_train_batch_end(self, batch, logs=None):
-    if batch % self.skip_step == 0:
-      self.logs.append(self.inspect())
+  def __init__(self, batch, activations, gradients, weight_gradients):
+    self.batch = batch
+    self.activations = activations
+    self.gradients = gradients
+    self.weight_gradients = weight_gradients
 
 
-class WeightInspector(Inspector):
-  """Inspects the weights values while training."""
-
-  def inspect(self):
-    vars = self.model.trainable_variables
-    return [self._get_value(var) for var in vars]
-
-  def _get_value(self, tensor):
-    return {'name': tensor.name,
-            'value': tensor.numpy().tolist()}
-
-
-class LayerInspector(Inspector):
-  r"""Inspects the activations and gradients of all layers in the
+class LayerInspector(tf.keras.callbacks.Callback):
+  r"""Inspects the activations and gradients acrossing layers in the
   training process.
 
-  Suppose `self.model` has layers: layer_1, layer_2, ..., layer_n,
-  then activations are the activations of each layer: z_1, z_2, ...
-  z_n. And the gradients are dL / dz_1, dL / d_2, ..., dL / dz_n.
+  The model shall be `tf.keras.Sequential`.
+
+  WARNINGS:
+  This callback will slow down the training process. It will cause
+  `WARNING:tensorflow:Method (on_train_batch_end) is slow compared `
+  `to the batch update`.
 
   Args:
     samples: Tuple[np.array, np.array]
       The samples used for passing through the layers of the model.
       The same type as the inputs in `model.fit`.
-    level: str
-      "original": logs all components of the tensors
-      "mean_and_std": logs only means and stds of the tensors
+    aspects: Callable[[np.array], dict]
+      Defines what aspects of the tensor (casted to `np.array`) are
+      you to inspect.
     skip_step: int
       Logging the weights values per `skip_step` steps (batches).
+    **kwargs:
+      Kwargs of `tf.keras.callbacks.Callback`.
   """
 
-  def __init__(self, samples, level='original', skip_step=10, **kwargs):
-    super().__init__(skip_step, **kwargs)
+  def __init__(self, samples, aspects, skip_step=10, **kwargs):
+    super().__init__(**kwargs)
     self.samples = samples
-    self.level = level
+    self.aspects = aspects
+    self.skip_step = skip_step
 
     self._X = tf.convert_to_tensor(samples[0])
     self._y = tf.convert_to_tensor(samples[1])
 
-  def inspect(self):
+    self.logs = []
+
+  def on_train_batch_end(self, batch, logs=None):
+    if batch % self.skip_step == 0:
+      self.logs.append(self._inspect(batch))
+
+  def on_train_begin(self, logs=None):
+    assert isinstance(self.model, tf.keras.Sequential)
+
+  def _inspect(self, batch):
     layers = self.model.layers
 
-    loss = self.model.loss
+    # get loss
     if isinstance(self.model.loss, str):
-      loss = tf.keras.losses.get(loss)
+      loss = tf.keras.losses.get(self.model.loss)
+    else:
+      loss = self.model.loss
 
-    with tf.GradientTape(persistent=True) as g:
-      activations = []
-      activation = self._X
-      for layer in layers:
-        activation = layer(activation)
-        activations.append(activation)
+    variables = self.model.trainable_variables
 
-      output = activations[-1]
-      loss_val = loss(self._y, output)
+    activations = []
+    gradients = []
 
-    grad = g.gradient(
-        loss_val,
-        output,
-        unconnected_gradients='zero')
-    gradients = [grad]
+    # forward propagate
+    x = self._X
+    gradient_triplets = []
+    for layer in layers:
+      with tf.GradientTape() as g:
+        g.watch(x)
+        y = layer(x)
+      activations.append(self.aspects(y.numpy()))
+      gradient_triplets.append((g, x, y))
+      x = y
 
-    num_layers = len(layers)
-    for i in range(num_layers - 1):
-      grad = g.gradient(
-          activations[(num_layers - i - 1)],
-          activations[(num_layers - i - 2)],
-          grad,
-          unconnected_gradients='zero')
-      gradients.append(grad)
+    # compute dloss / dy
+    with tf.GradientTape() as g:
+      g.watch(y)
+      l = loss(self._y, y)
+    grad = g.gradient(l, y, unconnected_gradients='zero')
+    gradients.append(self.aspects(grad.numpy()))
 
-    activations = [self._get_value(t) for t in activations]
-    gradients = [self._get_value(t) for t in gradients]
+    # backward propagate
+    for g, x, y in gradient_triplets[::-1]:
+      grad = g.gradient(y, x, grad, unconnected_gradients='zero')
+      gradients.append(self.aspects(grad.numpy()))
+
     gradients.reverse()
 
-    return {'activations': activations,
-            'gradients': gradients}
+    # to compute the dL / dv for v in variables, we have to do
+    # forward and backward computations once again
+    variables = self.model.trainable_variables
+    with tf.GradientTape() as g:
+      l = loss(self._y, self.model(self._X))
+    grad_vars = g.gradient(l, variables, unconnected_gradients='zero')
+    weight_gradients = {v.name: self.aspects(g.numpy())
+                        for v, g in zip(variables, grad_vars)}
 
-  def _get_value(self, tensor):
-    array = tensor.numpy()
-
-    if self.level == 'original':
-      return {'value': array.tolist()}
-
-    elif self.level == 'mean_and_std':
-      return {'mean': array.mean(), 'std': array.std()}
-
-    else:
-      raise ValueError(f'Unknown level: "{self.level}".')
+    return InspectResult(batch, activations, gradients, weight_gradients)

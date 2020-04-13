@@ -14,34 +14,38 @@ tf.random.set_seed(42)
 DTYPE = 'float32'
 tf.keras.backend.set_floatx(DTYPE)
 
+class HopfieldLayer(tf.keras.layers.Layer):
 
-class MyLayer(tf.keras.layers.Layer):
+    def __init__(self, units, dt, t,
+                 lower_bounded_fn,
+                 linear_transform=identity,
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.dt = tf.convert_to_tensor(dt, dtype=DTYPE)
+        self.t = tf.convert_to_tensor(t, dtype=DTYPE)
+        self.lower_bounded_fn = lower_bounded_fn
+        self.linear_transform = linear_transform
 
-  def __init__(self, units, dt, num_grids, **kwargs):
-    super().__init__(**kwargs)
-    self.dt = dt
-    self.num_grids = num_grids
+        t0 = tf.constant(0.)
 
-    t0 = tf.constant(0., dtype=DTYPE)
-    self.tN = t0 + num_grids * dt
+        self._model = tf.keras.Sequential([
+            tf.keras.layers.Dense(1024, activation='relu'),
+            tf.keras.layers.Dense(units),
+        ])
+        self._model.build([None, units])
+        self._pvf = hopfield(
+            self.linear_transform,
+            lambda x: self.lower_bounded_fn(self._model(x)))
+        solver = RK4Solver(self.dt)
+        self._node_fn = get_node_function(
+            solver, tf.constant(0.), self._pvf)
 
-    self._model = tf.keras.Sequential([
-        tf.keras.layers.Dense(1024, activation='relu', dtype=DTYPE),
-        tf.keras.layers.Dense(1, activation='sigmoid', dtype=DTYPE),
-    ])
-    self._model.build([None, units])
-    self._pvf = hopfield(identity, self._model)
+    def call(self, x):
+        y = self._node_fn(self.t, x)
+        return y
 
-    self._node_fn = get_node_function(RK4Solver(self.dt, dtype=DTYPE),
-                                      tf.constant(0., dtype=DTYPE),
-                                      self._pvf)
-
-  def call(self, x):
-    y = self._node_fn(self.tN, x)
-    return y
-
-  def get_config(self):
-    return super().get_config().copy()
+    def get_config(self):
+        return super().get_config().copy()
 
 
 def process(X, y):
@@ -61,15 +65,37 @@ scalar.fit(x_train)
 x_train = scalar.transform(x_train)
 x_test = scalar.transform(x_test)
 
-model = tf.keras.Sequential([
+
+def get_compiled_model(lower_bounded_fn, t, lr=1e-3, epsilon=1e-3):
+  model = tf.keras.Sequential([
     tf.keras.layers.Input([28 * 28]),
     tf.keras.layers.Dense(64, use_bias=False),  # down-sampling
-    MyLayer(64, dt=1e-1, num_grids=5),
+    tf.keras.layers.LayerNormalization(),
+    HopfieldLayer(64, dt=1e-1, t=t,
+                  linear_transform=identity,
+                  lower_bounded_fn=lower_bounded_fn),
     tf.keras.layers.Dense(10, activation='softmax')
-])
+  ])
 
-model.compile(loss='categorical_crossentropy',
-              optimizer=tf.optimizers.Adam(1e-3),
-              metrics=['accuracy'])
+  model.compile(
+      loss='categorical_crossentropy',
+      optimizer=tf.optimizers.Adam(lr, epsilon=epsilon),
+      metrics=['accuracy'])
 
-model.fit(x_train, y_train, epochs=12, batch_size=128)
+  return model
+
+
+@tf.function
+def lower_bounded_fn(x):
+    return 8 * tf.sqrt(tf.reduce_sum(tf.square(x), axis=1))
+
+model = get_compiled_model(lower_bounded_fn, t=1.)
+model.fit(x_train, y_train, epochs=10, batch_size=128)
+score = model.evaluate(x_train, y_train)
+
+longer_period_model = get_compiled_model(lower_bounded_fn, t=3.)
+longer_period_model.set_weights(model.get_weights())
+longer_period_score = longer_period_model.evaluate(x_train, y_train)
+
+for i in range(2):
+  print(f'{score[i]:.5f} => {longer_period_score[i]:.5f}')

@@ -129,11 +129,11 @@ class RungeKuttaSolver(ODESolver):
     min_dt: float
   """
 
-  def __init__(self, a, b, c, dt, min_dt):
+  def __init__(self, a, b, c, dt, min_dt, dtype='float32'):
     assert min_dt < dt
     self.c = c
-    self.dt = tf.convert_to_tensor(dt)
-    self.min_dt = tf.convert_to_tensor(min_dt)
+    self.dt = tf.convert_to_tensor(dt, dtype=dtype)
+    self.min_dt = tf.convert_to_tensor(min_dt, dtype=dtype)
     self._rk_step = RungeKuttaStep(a, b)
 
   def __call__(self, fn):
@@ -202,17 +202,17 @@ class RungeKuttaFehlbergSolver(ODESolver):
     max_dt: Optional[float]
   """
 
-  def __init__(self, a, b, c, e, init_dt, tol, min_dt, max_dt):
+  def __init__(self, a, b, c, e, init_dt, tol, min_dt, max_dt, dtype='float32'):
     assert len(c) == len(e)
     self.c = c
     self.e = e
-    self.init_dt = tf.convert_to_tensor(init_dt)
-    self.tol = tf.convert_to_tensor(tol)
-    self.min_dt = tf.convert_to_tensor(min_dt)
+    self.init_dt = tf.convert_to_tensor(init_dt, dtype=dtype)
+    self.tol = tf.convert_to_tensor(tol, dtype=dtype)
+    self.min_dt = tf.convert_to_tensor(min_dt, dtype=dtype)
     if max_dt is None:
       self.max_dt = None
     else:
-      self.max_dt = tf.convert_to_tensor(max_dt)
+      self.max_dt = tf.convert_to_tensor(max_dt, dtype=dtype)
     self._rk_step = RungeKuttaStep(a, b)
     self._diagnostics = RungeKuttaFehlbergDiagnostics()
 
@@ -331,8 +331,8 @@ class RK4Solver(RungeKuttaSolver):
   ]
   _C = [1 / 6, 1 / 3, 1 / 3, 1 / 6]
 
-  def __init__(self, dt, min_dt=1e-3):
-    super().__init__(self._A, self._B, self._C, dt, min_dt)
+  def __init__(self, dt, min_dt=1e-3, **kwargs):
+    super().__init__(self._A, self._B, self._C, dt, min_dt, **kwargs)
 
 
 class RKF56Solver(RungeKuttaFehlbergSolver):
@@ -349,9 +349,9 @@ class RKF56Solver(RungeKuttaFehlbergSolver):
   _C = [25 / 216, 0, 1408 / 2565, 2197 / 4104, -1 / 5, 0]
   _E = [1 / 360, 0, -128 / 4275, -2197 / 75240, 1 / 50, 2 / 55]
 
-  def __init__(self, dt, tol, min_dt, max_dt=None):
+  def __init__(self, dt, tol, min_dt, max_dt=None, **kwargs):
     super().__init__(self._A, self._B, self._C, self._E,
-                     dt, tol, min_dt, max_dt)
+                     dt, tol, min_dt, max_dt, **kwargs)
 
 
 class ODESolveError(Exception):
