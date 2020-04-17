@@ -34,8 +34,8 @@ class HopfieldLayer(tf.keras.layers.Layer):
         ])
         self._model.build([None, units])
         self._pvf = hopfield(
-            self.linear_transform,
-            lambda x: self.lower_bounded_fn(self._model(x)))
+            lambda x: self.lower_bounded_fn(self._model(x)),
+            self.linear_transform)
         solver = RK4Solver(self.dt)
         self._node_fn = get_node_function(
             solver, tf.constant(0.), self._pvf)

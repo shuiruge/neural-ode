@@ -65,24 +65,29 @@ def rescale(factor):
   return rescale_fn
 
 
-def hopfield(linear_transform, lower_bounded_fn):
+def hopfield(energy, linear_transform=identity):
   r"""Returns a static phase vector field defined by
 
   ```
   \begin{equation}
     \frac{dx^{\alpha}}{dt} (t) = - U^{\alpha \beta} \
-      \frac{\partial E}{\partial x^\beta} \left( x(t) \right),
+      \frac{\partial \mathcal{E}}{\partial x^\beta} \left( x(t) \right),
   \end{equation}
 
-  where $U$ is a positive defined linear transformation, and $E$ a lower
-  bounded function.
+  where $U$ is a positive defined linear transformation, and energy
+  $\mathcal{E}$ a lower bounded scalar function.
   ```
 
   Args:
-    linear_trans: Callable[[PhasePoint], PhasePoint]
+    energy: Callable[[PhasePoint], tf.Tensor]
+      The lower bounded scalar (per sample) function `\mathcal{E}`.
+
+      Per sample means that it produces scalar for each sample in a batch of
+      inputs. Say, if the input shape is `[batch_size, model_dim_1, ...]`, then
+      the output shape will be `[batch_size]`.
+
+    linear_transform: Callable[[PhasePoint], PhasePoint]
       Positive defined linear transformation. The $U$ transform.
-    lower_bounded_fn: Callable[[PhasePoint], tf.Tensor]
-      The lower bounded scalar function `\mathcal{E}`.
 
   Returns: PhaseVectorField
   """
@@ -91,8 +96,8 @@ def hopfield(linear_transform, lower_bounded_fn):
   def static_field(_, x):
     with tf.GradientTape() as g:
       g.watch(x)
-      e = lower_bounded_fn(x)
-    grad = g.gradient(e, x, unconnected_gradients='zero')
-    return -linear_transform(grad)
+      e = energy(x)
+    energy_gradient = g.gradient(e, x, unconnected_gradients='zero')
+    return -linear_transform(energy_gradient)
 
   return static_field

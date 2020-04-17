@@ -5,7 +5,7 @@ import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 from node.core import get_node_function
 from node.solvers.runge_kutta import RK4Solver
-from node.hopfield import hopfield, identity
+from node.hopfield import hopfield
 from node.utils.callbacks import LayerInspector
 
 
@@ -16,8 +16,10 @@ tf.random.set_seed(42)
 
 class NodeLayer(tf.keras.layers.Layer):
 
-  def __init__(self, fn, t, dt):
-    super().__init__()
+  def __init__(self, fn, t, dt, **kwargs):
+    super().__init__(**kwargs)
+
+    self._config = {'fn': fn, 't': t, 'dt': dt}
 
     self.t = tf.convert_to_tensor(t)
     self.dt = tf.convert_to_tensor(dt)
@@ -30,23 +32,45 @@ class NodeLayer(tf.keras.layers.Layer):
     y = self._node_fn(self.t, x)
     return y
 
+  def get_config(self):
+    config = super().get_config()
+    for k, v in self._config.items():
+      config[k] = v
+    return config
+
 
 class HopfieldLayer(tf.keras.layers.Layer):
 
-  def __init__(self, fn, t, dt, lower_bounded_fn):
-    super().__init__()
+  def __init__(self, fn, t, dt, lower_bounded_fn, **kwargs):
+    super().__init__(**kwargs)
+
+    self._config = {'fn': fn, 't': t, 'dt': dt,
+                    'lower_bounded_fn': lower_bounded_fn}
+
+    self.fn = fn
+    self.lower_bounded_fn = lower_bounded_fn
 
     self.t = tf.convert_to_tensor(t)
     self.dt = tf.convert_to_tensor(dt)
 
     solver = RK4Solver(self.dt)
     t0 = tf.constant(0.)
-    pvf = hopfield(identity, lambda x: lower_bounded_fn(fn(x)))
+    energy = lambda x: lower_bounded_fn(fn(x))
+    pvf = hopfield(energy)
+
+    self.energy = energy
+    self.pvf = pvf
     self._node_fn = get_node_function(solver, t0, pvf)
 
   def call(self, x):
     y = self._node_fn(self.t, x)
     return y
+
+  def get_config(self):
+    config = super().get_config()
+    for k, v in self._config.items():
+      config[k] = v
+    return config
 
 
 def process(X, y):
@@ -59,7 +83,10 @@ def process(X, y):
 
 class HopfieldModel(tf.keras.Sequential):
 
-  def __init__(self, lower_bounded_fn, units, t, dt, layerized=False):
+  def __init__(self, lower_bounded_fn, units, t, dt, layerized=False, **kwargs):
+    self._config = {'lower_bounded_fn': lower_bounded_fn, 'units': units,
+                    't': t, 'dt': dt, 'layerized': layerized}
+
     self.lower_bounded_fn = lower_bounded_fn
     self.units = units
     self.t = t
@@ -90,7 +117,7 @@ class HopfieldModel(tf.keras.Sequential):
 
     layers.append(tf.keras.layers.Dense(10, activation='softmax'))
 
-    super().__init__(layers=layers)
+    super().__init__(layers=layers, **kwargs)
 
     # `tf.keras.Model` will trace the variables within the layers'
     # `trainable_variables` attributes. The variables initialized
@@ -100,13 +127,15 @@ class HopfieldModel(tf.keras.Sequential):
     # of `tf.keras.Model` via the `_trainable_weights` attribute.
     self._trainable_weights += fn.trainable_variables
 
-
-@tf.function
-def lower_bounded_fn(x):
-  return 5 * tf.sqrt(tf.reduce_sum(tf.square(x), axis=1))
+  def get_config(self):
+    config = super().get_config()
+    for k, v in self._config.items():
+      config[k] = v
+    return config
 
 
 class Monitor(LayerInspector):
+  """C.f. the paper glorot10a."""
 
   def __init__(self, samples, **kwargs):
 
@@ -221,36 +250,38 @@ def get_non_node_model(node_model, x_train, y_train):
   return non_node_model
 
 
-mnist = tf.keras.datasets.mnist
-(x_train, y_train), _ = mnist.load_data()
-x_train, y_train = process(x_train, y_train)
+if __name__ == '__main__':
 
-scalar = StandardScaler()
-scalar.fit(x_train)
-x_train = scalar.transform(x_train)
+  mnist = tf.keras.datasets.mnist
+  (x_train, y_train), _ = mnist.load_data()
+  x_train, y_train = process(x_train, y_train)
 
-model = HopfieldModel(
-  lower_bounded_fn, units=64, t=1.0, dt=0.1, layerized=False)
-model.compile(
-  loss='categorical_crossentropy',
-  optimizer=tf.optimizers.Nadam(1e-3, epsilon=1e-3),
-  metrics=['accuracy'])
+  scalar = StandardScaler()
+  scalar.fit(x_train)
+  x_train = scalar.transform(x_train)
 
-monitor = Monitor(samples=(x_train[:30], y_train[:30]))
-model.fit(x_train, y_train,
-          epochs=10, batch_size=128,
-          callbacks=[monitor],
-          verbose=2)
+  model = HopfieldModel(
+    lower_bounded_fn, units=64, t=1.0, dt=0.1, layerized=False)
+  model.compile(
+    loss='categorical_crossentropy',
+    optimizer=tf.optimizers.Nadam(1e-3, epsilon=1e-3),
+    metrics=['accuracy'])
 
-longer_period_effect(model, 3.0, x_train, y_train)
+  monitor = Monitor(samples=(x_train[:30], y_train[:30]))
+  model.fit(x_train, y_train,
+            epochs=10, batch_size=128,
+            callbacks=[monitor],
+            verbose=2)
 
-# test noise effect
+  longer_period_effect(model, 3.0, x_train, y_train)
 
-add_noise = add_white_noise(scalar, scale=0.03)
-noised_effect(model, add_noise, x_train, y_train)
+  # test noise effect
 
-longer_period_model = get_longer_period_model(model, t=3.0)
-noised_effect(longer_period_model, add_noise, x_train, y_train)
+  add_noise = add_white_noise(scalar, scale=0.03)
+  noised_effect(model, add_noise, x_train, y_train)
 
-non_node_model = get_non_node_model(model, x_train, y_train)
-noised_effect(non_node_model, add_noise, x_train, y_train)
+  longer_period_model = get_longer_period_model(model, t=3.0)
+  noised_effect(longer_period_model, add_noise, x_train, y_train)
+
+  non_node_model = get_non_node_model(model, x_train, y_train)
+  noised_effect(non_node_model, add_noise, x_train, y_train)
