@@ -15,7 +15,10 @@ class PhaseVectorField:
   """Type that represents callable with inputs `Time` and `PhasePoint`
   and output `PhasePoint`. The input and output phase points share the same
   shape and dtype."""
- 
+
+  def __call__(self, t: Time, x: PhasePoint) -> PhasePoint:
+    return NotImplemented
+
 
 class ODESolver:
   r"""
