@@ -16,5 +16,6 @@ Neural ODE.
 - [X] Add adaptive solvers.
 - [X] Re-write ALBERT with NODE.
 - [X] Time series forecasting via ALBERT.
+- [X] Precise definitions for phase point, phase vector field, e.t.c.
 - [ ] Adaptive time interval.
 - [ ] Dynamical convergence in Hopfield.
