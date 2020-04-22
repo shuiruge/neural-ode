@@ -2,6 +2,7 @@
 documentation."""
 
 import tensorflow as tf
+from node.base import phase_vector_field
 from node.utils.nest import nest_map
 
 
@@ -92,7 +93,7 @@ def hopfield(energy, linear_transform=identity):
   Returns: PhaseVectorField
   """
 
-  @tf.function
+  @phase_vector_field
   def static_field(_, x):
     with tf.GradientTape() as g:
       g.watch(x)
