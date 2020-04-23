@@ -24,6 +24,15 @@ def neg(x):
 
 @tf.function
 def sign(x):
+  r"""Like `tf.sign`, but keeps the dtype.
+
+  Args:
+    x: tf.Tensor
+      A numerical scalar.
+
+  Returns: tf.Tensor
+    A numerical scalar with the same dtype as the `x`.
+  """
   if x > 0:
     return tf.constant(1, dtype=x.dtype)
   elif x == 0:
@@ -261,7 +270,7 @@ class RungeKuttaFehlbergSolver(ODESolver):
 
 
 class RungeKuttaFehlbergDiagnostics:
-  
+
   def __init__(self):
     self.num_steps = tf.Variable(0, trainable=False)
     self.num_accepted = tf.Variable(0, trainable=False)
@@ -279,7 +288,7 @@ class RungeKuttaFehlbergDiagnostics:
     if not succeed:
       self.succeed.assign(False)
     self.total_error.assign_add(error)
-  
+
   def reset(self):
     self.num_steps.assign(0)
     self.num_accepted.assign(0)
