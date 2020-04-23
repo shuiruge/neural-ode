@@ -22,6 +22,16 @@ def neg(x):
   return scalar_product(-1, x)
 
 
+@tf.function
+def sign(x):
+  if x > 0:
+    return tf.constant(1, dtype=x.dtype)
+  elif x == 0:
+    return tf.constant(0, dtype=x.dtype)
+  else:
+    return tf.constant(-1, dtype=x.dtype)
+
+
 class RungeKuttaStep:
   r"""Computes the :math:`k`s.
 
@@ -54,35 +64,13 @@ class RungeKuttaStep:
     self.b = b
     self.order = len(a)
 
-  def __call__(self, fn, t, x, dt, flip=False):
+  def __call__(self, fn, t, x, dt):
     """
-    ```math
-
-    If $t_0 > t_1$ in the initial value problem
-
-    \begin{align}
-      \frac{dx}{dt} & = f(t, x) \\
-      x(t_0) = x_0,
-    \end{align}
-
-    then we shall reduce this to the standard initial value problem where
-    $t_1 > t0$ by a flipping trick:
-
-    \begin{align}
-      t & \arrow -t \\
-      dt & \arrow -dt \\
-      f(t) & \arrow f(-t).
-    \end{align}
-
-    ```
-
     Args:
       fn: PhaseVectorField
       t: Time
       x: PhasePoint
       dt: Time
-      flip: bool
-        Whether to use the flipping trick or not.
 
     Returns: tf.Tensor
     """
@@ -99,10 +87,7 @@ class RungeKuttaStep:
         def xi(x, *ks):
           return x + sum(bij * kj for bij, kj in zip(self.b[i], ks))
 
-        if not flip:
-          ki = scalar_product(dt, fn(ti, xi(x, *ks)))
-        else:
-          ki = scalar_product(-dt, fn(-ti, xi(x, *ks)))
+        ki = scalar_product(dt, fn(ti, xi(x, *ks)))
         ks.append(ki)
 
       return ks
@@ -144,20 +129,14 @@ class RungeKuttaSolver(ODESolver):
 
     @tf.function
     def forward(t0, t1, x0):
-      # If t0 > t1, then flip the t-axis to ensure the
-      # situation of the Runge-Kutta method
-      flip = False
-      if t0 > t1:
-        t0, t1 = -t0, -t1
-        flip = True
-
+      s = sign(t1 - t0)
       t = t0
       x = x0
-      dt = self.dt
-      while t1 - t > self.min_dt:
-        if t < t1 and t + dt > t1:
+      dt = s * self.dt
+      while s * (t1 - t) > self.min_dt:
+        if tf.abs(t1 - t) < tf.abs(dt):
           dt = t1 - t
-        ks = self._rk_step(fn, t, x, dt, flip=flip)
+        ks = self._rk_step(fn, t, x, dt)
         x = add(x, dx(*ks))
         t = t + dt
       return x
@@ -232,30 +211,25 @@ class RungeKuttaFehlbergSolver(ODESolver):
 
     @tf.function
     def forward(t0, t1, x0):
-      # If t0 > t1, then flip the t-axis to ensure the
-      # situation of the Runge-Kutta method
-      flip = False
-      if t0 > t1:
-        t0, t1 = -t0, -t1
-        flip = True
-
+      s = sign(t1 - t0)
       t = t0
       x = x0
-      dt = self.init_dt
+      dt = s * self.init_dt
+
       succeed = True
       self._diagnostics.reset()
 
-      while t1 - t > self.min_dt:
+      while s * (t1 - t) > self.min_dt:
         accepted = False
 
-        if t < t1 and t + dt > t1:
+        if tf.abs(t1 - t) < tf.abs(dt):
           dt = t1 - t
 
-        ks = self._rk_step(fn, t, x, dt, flip=flip)
+        ks = self._rk_step(fn, t, x, dt)
         r = error(dt, *ks)
 
         # if r < self.tol:  # TODO
-        if r < self.tol or dt <= self.min_dt:
+        if r < self.tol or tf.abs(dt) <= self.min_dt:
           accepted = True
           x = add(x, dx(*ks))
           t = t + dt
@@ -267,13 +241,13 @@ class RungeKuttaFehlbergSolver(ODESolver):
           dt = 4 * dt
         else:
           dt = delta * dt
-        if self.max_dt is not None and dt > self.max_dt:
-          dt = self.max_dt
+        if self.max_dt is not None and tf.abs(dt) > self.max_dt:
+          dt = s * self.max_dt
         # Assertion is temporally not well supported in TF,
         # so we currently limit the `dt` by `self.min_dt`
         # instead of raising an error.
-        if dt < self.min_dt:
-          dt = self.min_dt
+        if tf.abs(dt) < self.min_dt:
+          dt = s * self.min_dt
           succeed = False
 
         self._diagnostics.update(accepted, succeed, r)
