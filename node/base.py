@@ -127,6 +127,7 @@ class DynamicalODESolver:
       Args:
         start_time: Time
         initial_phase_point: PhasePoint
-      Returns: PhasePoint
+      Returns: Tuple[Time, PhasePoint]
+        The end time and the final phase point.
     """
     return NotImplemented

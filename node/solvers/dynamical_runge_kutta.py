@@ -1,6 +1,9 @@
 import tensorflow as tf
 from node.base import DynamicalODESolver
-from node.solvers.runge_kutta import RungeKuttaStep, add
+from node.utils.nest import nest_map
+from node.solvers.runge_kutta import (
+  add, norm, sign, RungeKuttaStep, RungeKuttaFehlbergDiagnostics,
+  RungeKuttaSolver, RungeKuttaFehlbergSolver)
 
 
 class DynamicalRungeKuttaSolver(DynamicalODESolver):
@@ -49,16 +52,7 @@ class DynamicalRungeKuttaSolver(DynamicalODESolver):
     return forward
 
 
-def norm(x):
-
-  def l2(x):
-    return tf.sqrt(tf.reduce_sum(tf.square(x)))
-
-  flat = tf.nest.flatten(x)
-  return tf.reduce_max([l2(_) for _ in flat])
-
-
-class RungeKuttaFehlbergSolver(ODESolver):
+class DynamicalRungeKuttaFehlbergSolver(DynamicalODESolver):
   r"""
   ```math
 
@@ -100,7 +94,7 @@ class RungeKuttaFehlbergSolver(ODESolver):
     self._rk_step = RungeKuttaStep(a, b)
     self._diagnostics = RungeKuttaFehlbergDiagnostics()
 
-  def __call__(self, fn):
+  def __call__(self, fn, stop_condition):
 
     @nest_map
     def dx(*ks):
@@ -115,31 +109,24 @@ class RungeKuttaFehlbergSolver(ODESolver):
       return norm(_rs(*ks))
 
     @tf.function
-    def forward(t0, t1, x0):
-      # If t0 > t1, then flip the t-axis to ensure the
-      # situation of the Runge-Kutta method
-      flip = False
-      if t0 > t1:
-        t0, t1 = -t0, -t1
-        flip = True
-
+    def forward(t0, x0, reverse=False):
+      s = tf.constant(-1.) if reverse else tf.constant(1.)
       t = t0
       x = x0
-      dt = self.init_dt
+      dt = -self.init_dt if reverse else self.init_dt
+      s = sign(dt)
+
       succeed = True
       self._diagnostics.reset()
 
-      while t1 - t > self.min_dt:
+      while not stop_condition(t, x):
         accepted = False
 
-        if t < t1 and t + dt > t1:
-          dt = t1 - t
-
-        ks = self._rk_step(fn, t, x, dt, flip=flip)
+        ks = self._rk_step(fn, t, x, dt)
         r = error(dt, *ks)
 
         # if r < self.tol:  # TODO
-        if r < self.tol or dt <= self.min_dt:
+        if r < self.tol or tf.abs(dt) <= self.min_dt:
           accepted = True
           x = add(x, dx(*ks))
           t = t + dt
@@ -151,17 +138,17 @@ class RungeKuttaFehlbergSolver(ODESolver):
           dt = 4 * dt
         else:
           dt = delta * dt
-        if self.max_dt is not None and dt > self.max_dt:
-          dt = self.max_dt
+        if self.max_dt is not None and tf.abs(dt) > self.max_dt:
+          dt = s * self.max_dt
         # Assertion is temporally not well supported in TF,
         # so we currently limit the `dt` by `self.min_dt`
         # instead of raising an error.
-        if dt < self.min_dt:
-          dt = self.min_dt
+        if tf.abs(dt) < self.min_dt:
+          dt = s * self.min_dt
           succeed = False
 
         self._diagnostics.update(accepted, succeed, r)
-      return x
+      return (t, x)
 
     return forward
 
@@ -170,41 +157,7 @@ class RungeKuttaFehlbergSolver(ODESolver):
     return self._diagnostics
 
 
-class RungeKuttaFehlbergDiagnostics:
-  
-  def __init__(self):
-    self.num_steps = tf.Variable(0, trainable=False)
-    self.num_accepted = tf.Variable(0, trainable=False)
-    self.accept_ratio = tf.Variable(0., trainable=False)
-    self.succeed = tf.Variable(True, trainable=False)
-    self.total_error = tf.Variable(0., trainable=False)
-
-  def update(self, accepted, succeed, error):
-    self.num_steps.assign_add(1)
-    if accepted:
-      self.num_accepted.assign_add(1)
-    self.accept_ratio.assign(
-        tf.cast(self.num_accepted, self.accept_ratio.dtype) /
-        tf.cast(self.num_steps, self.accept_ratio.dtype))
-    if not succeed:
-      self.succeed.assign(False)
-    self.total_error.assign_add(error)
-  
-  def reset(self):
-    self.num_steps.assign(0)
-    self.num_accepted.assign(0)
-    self.accept_ratio.assign(0.)
-    self.succeed.assign(True)
-    self.total_error.assign(0.)
-
-  def __repr__(self):
-    return ('num_steps: {}, num_accepted: {}, accept_ratio: {}, '
-            'succeed: {}, total_error: {}').format(
-                self.num_steps, self.num_accepted, self.accept_ratio,
-                self.succeed, self.total_error)
-
-
-class RK4Solver(RungeKuttaSolver):
+class DynamicalRK4Solver(DynamicalRungeKuttaSolver):
 
   _A = [None, 1 / 2, 1 / 2, 1]
   _B = [
@@ -219,7 +172,7 @@ class RK4Solver(RungeKuttaSolver):
     super().__init__(self._A, self._B, self._C, dt, min_dt, **kwargs)
 
 
-class RKF56Solver(RungeKuttaFehlbergSolver):
+class DynamicalRKF56Solver(DynamicalRungeKuttaFehlbergSolver):
 
   _A = [None, 1 / 4, 3 / 8, 12 / 13, 1, 1 / 2]
   _B = [
@@ -236,7 +189,3 @@ class RKF56Solver(RungeKuttaFehlbergSolver):
   def __init__(self, dt, tol, min_dt, max_dt=None, **kwargs):
     super().__init__(self._A, self._B, self._C, self._E,
                      dt, tol, min_dt, max_dt, **kwargs)
-
-
-class ODESolveError(Exception):
-  pass
