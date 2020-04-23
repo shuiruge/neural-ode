@@ -24,24 +24,24 @@ def f(t, x):
 
 solver = RK4Solver(0.1)
 t0 = tf.constant(0.)
+t1 = tf.constant(1.)
 if ARGS.with_signature:
     signature = [tf.TensorSpec(shape=[None, 3], dtype=tf.float32)]
-    node_f = get_node_function(solver, t0, f, signature=signature)
+    node_f = get_node_function(solver, f, signature=signature)
 else:
-    node_f = get_node_function(solver, t0, f, signature=None)
-t1 = tf.constant(1.)
+    node_f = get_node_function(solver, f, signature=None)
 
 
 def test_node_f(x0):
     with tf.GradientTape() as g:
         g.watch(x0)
-        x1 = node_f(t1, x0)
+        x1 = node_f(t0, t1, x0)
     grad = g.gradient(x1, x0, x1)
     print(grad)
 
     with tf.GradientTape() as g:
         g.watch(x0)
-        x1 = node_f(t1, x0)
+        x1 = node_f(t0, t1, x0)
     grad = g.gradient(x1, x0, x1)
     print(grad)
 

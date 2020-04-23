@@ -45,11 +45,10 @@ class MyLayer(tf.keras.layers.Layer):
     else:
       raise ValueError(f'Unknown solver: "{ARGS.solver}"')
 
-    self._node_fn = get_node_function(
-        solver, tf.constant(0.), self._pvf)
+    self._node_fn = get_node_function(solver, self._pvf)
 
   def call(self, x):
-    y = self._node_fn(self.tN, x)
+    y = self._node_fn(tf.constant(0.), self.tN, x)
     return y
 
 

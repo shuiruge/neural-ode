@@ -113,3 +113,20 @@ class ODESolver:
       Returns: PhasePoint
     """
     return NotImplemented
+
+
+class DynamicalODESolver:
+
+  def __call__(self, phase_vector_field, stop_condition):
+    """
+    Args:
+      phase_vector_field: PhaseVectorField
+      stop_condition: Callable[[Time, PhasePoint], bool]
+
+    Returns: Callable[[Time, PhasePoint], PhasePoint]
+      Args:
+        start_time: Time
+        initial_phase_point: PhasePoint
+      Returns: PhasePoint
+    """
+    return NotImplemented

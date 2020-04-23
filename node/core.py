@@ -74,28 +74,104 @@ def _negate(x):
   return -1 * x
 
 
-def get_node_function(solver, t0, fn, signature=None):
+def get_node_function(solver, fn, signature=None):
   r"""
 
   ```math
 
   Let $f$ a phase vector field, then defnine the "node function" $F$ as
 
-  $$ F(t, x) := \int_{t_0}^t f(t, F(t, x)) dt, $$ and
-  
-  $$ F(t_0, x) = x. $$
-  
-  That is, the ending phase point at $t$ of the flow starting on $x$ at $t_0$
+  $$ F(t0, t1, x0) := x0 + \int_{t_0}^{t_1} f(t, F(t0, t, x0)) dt. $$
+
+  That is, the ending phase point at $t1$ of the flow starting on $x0$ at $t_0$
   on the phase vector field.
 
   ```
 
   Args:
     solver: ODESolver
-    t0: Time
-      The start time of the phase flow. The $t_0$ in the definition.
     fn: PhaseVectorField
       The $f$ in the definition.
+    signature: Nest[tf.TensorSpec]
+      The signature of the phase point `x` in the definition.
+
+  Returns: PhaseVectorField
+  """
+  forward = solver(fn)
+
+  def process_args(args):
+    if len(args) == 1:  # single arg in `*args`
+      return args[0]
+    else:
+      # `args` is a tuple, we need list instead for unifying
+      # the nesting structures
+      return list(args)
+
+  if signature:
+    dtype = signature[0].dtype
+    time_spec_0 = tf.TensorSpec(shape=[], dtype=dtype)
+    time_spec_1 = tf.TensorSpec(shape=[], dtype=dtype)
+    input_signature = [time_spec_0, time_spec_1] + signature
+  else:
+    input_signature = None
+
+  @tf.function(input_signature=input_signature)
+  def node_fn(t0, t1, x0):
+    """
+    Args:
+      t0: Time
+      t1: Time
+      x0: PhasePoint
+
+    Returns: PhasePoint
+    """
+
+    @tf.custom_gradient
+    def custom_gradient_fn(*x):
+      """For matching the signature of `tf.custom_gradient`
+      https://tensorflow.google.cn/api_docs/python/tf/custom_gradient
+
+      Explicitly, the inputs to this function shall be tensors, each as
+      one arg; the output `grad_fn` accepts tensors, each as one arg, and
+      kwargs involving the key "variables".
+      """
+      x = process_args(x)
+      y = forward(t0, t1, x)
+
+      # TF will catch all the variables watched by `tf.GradientTape`,
+      # and pass them into the `grad_fn` via the `variables` kwarg.
+      @tf.function
+      def grad_fn(*grad_ys, **kwargs):
+        # XXX: `tf.custom_gradient` has an unfixed
+        # [bug](https://github.com/tensorflow/tensorflow/issues/31945).
+        # Because of this, temporally, we need some [hacking]
+        # (https://github.com/tensorflow/tensorflow/issues/31945#issuecomment-545801180)  # noqa:E501
+        # TODO: Re-write this part when the bug is fixed.
+        grad_ys = process_args(grad_ys)
+        variables = kwargs.get('variables', None)
+
+        backward = reverse_mode_derivative(solver, fn, variables)
+        _, grad_by_x, grad_by_vars = backward(t0, t1, y, grad_ys)
+        return [grad_by_x], grad_by_vars
+
+      return y, grad_fn
+
+    if isinstance(x0, list):
+      return custom_gradient_fn(*x0)
+    else:
+      return custom_gradient_fn(x0)
+
+  return node_fn
+
+
+def get_dynamical_node_function(
+        dynamial_solver, fn, stop_condition, signature=None):
+  r"""
+  Args:
+    dynamical_solver: DynamicalODESolver
+    fn: PhaseVectorField
+      The $f$ in the definition.
+    stop_condition: Callable[[Time, PhasePoint], bool]
     signature: Nest[tf.TensorSpec]
       The signature of the phase point `x` in the definition.
 
