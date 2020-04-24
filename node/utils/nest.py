@@ -5,10 +5,7 @@ def nest_map(fn):  # TODO: add example.
   r"""Decorator converting `fn` to a nest map."""
 
   def nest_fn(*args, **kwargs):
-    r"""All args shall share the same nesting structure.
-
-    **ONLY SUPPORTS LIST NESTING.**
-    """
+    """All args shall share the same nesting structure."""
 
     def kwargs_filled_fn(*args):
       return fn(*args, **kwargs)

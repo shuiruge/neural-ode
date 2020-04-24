@@ -100,6 +100,7 @@ def get_node_function(solver, fn, signature=None):
   forward = solver(fn)
 
   def process_args(args):
+    """Converts tuple to list if args is multiple."""
     if len(args) == 1:  # single arg in `*args`
       return args[0]
     else:
@@ -135,6 +136,12 @@ def get_node_function(solver, fn, signature=None):
       one arg; the output `grad_fn` accepts tensors, each as one arg, and
       kwargs involving the key "variables".
       """
+
+      # Using `*x` instead of `x` is for supporting multiple inputs.
+      # Otherwise TF will combine the multiple inputs into one tensor,
+      # which then will raise `ValueError` since the combination fails
+      # when the inputs do not share spec.
+
       x = process_args(x)
       y = forward(t0, t1, x)
 
@@ -142,12 +149,14 @@ def get_node_function(solver, fn, signature=None):
       # and pass them into the `grad_fn` via the `variables` kwarg.
       @tf.function
       def grad_fn(*grad_ys, **kwargs):
+        # converts tuple to list, for ensuring the correct nesting structure.
+        grad_ys = process_args(grad_ys)
+
         # XXX: `tf.custom_gradient` has an unfixed
         # [bug](https://github.com/tensorflow/tensorflow/issues/31945).
         # Because of this, temporally, we need some [hacking]
         # (https://github.com/tensorflow/tensorflow/issues/31945#issuecomment-545801180)  # noqa:E501
         # TODO: Re-write this part when the bug is fixed.
-        grad_ys = process_args(grad_ys)
         variables = kwargs.get('variables', None)
 
         backward = reverse_mode_derivative(solver, fn, variables)
@@ -190,8 +199,8 @@ def get_dynamical_node_function(
   if signature is None:
     input_signature = None
   else:
-    time_signature = tf.TensorSpec(shape=[], dtype=t0.dtype)
-    input_signature = [time_signature] + signature
+    time_spec = tf.TensorSpec(shape=[], dtype=t0.dtype)
+    input_signature = [time_spec] + signature
 
   @tf.function(input_signature=input_signature)
   def node_fn(t, x):
@@ -211,24 +220,31 @@ def get_dynamical_node_function(
       one arg; the output `grad_fn` accepts tensors, each as one arg, and
       kwargs involving the key "variables".
       """
-      x = process_args(x)
 
-      y = forward(t0, t, x)
+      # Using `*x` instead of `x` is for supporting multiple inputs.
+      # Otherwise TF will combine the multiple inputs into one tensor,
+      # which then will raise `ValueError` since the combination fails
+      # when the inputs do not share spec.
+
+      x = process_args(x)
+      t1, y = forward(t, x)
 
       # TF will catch all the variables watched by `tf.GradientTape`,
       # and pass them into the `grad_fn` via the `variables` kwarg.
       @tf.function
       def grad_fn(*grad_ys, **kwargs):
+        # converts tuple to list, for ensuring the correct nesting structure.
+        grad_ys = process_args(grad_ys)
+
         # XXX: `tf.custom_gradient` has an unfixed
         # [bug](https://github.com/tensorflow/tensorflow/issues/31945).
         # Because of this, temporally, we need some [hacking]
         # (https://github.com/tensorflow/tensorflow/issues/31945#issuecomment-545801180)  # noqa:E501
         # TODO: Re-write this part when the bug is fixed.
-        grad_ys = process_args(grad_ys)
         variables = kwargs.get('variables', None)
 
         backward = reverse_mode_derivative(solver, fn, variables)
-        _, grad_by_x, grad_by_vars = backward(t0, t, y, grad_ys)
+        _, grad_by_x, grad_by_vars = backward(t, t1, y, grad_ys)
         return [grad_by_x], grad_by_vars
 
       return y, grad_fn
