@@ -160,14 +160,12 @@ def get_node_function(solver, fn, signature=None):
   return node_fn
 
 
-def get_dynamical_node_function(
-        dynamial_solver, fn, stop_condition, signature=None):
+def get_dynamical_node_function(dynamial_solver, fn, signature=None):
   r"""
   Args:
     dynamical_solver: DynamicalODESolver
     fn: PhaseVectorField
       The $f$ in the definition.
-    stop_condition: Callable[[Time, PhasePoint], bool]
     signature: Nest[tf.TensorSpec]
       The signature of the phase point `x` in the definition.
 

@@ -121,7 +121,17 @@ class DynamicalODESolver:
     """
     Args:
       phase_vector_field: PhaseVectorField
-      stop_condition: Callable[[Time, PhasePoint], bool]
+      stop_condition: Callable[[Time, PhasePoint, Time, PhasePoint], bool]
+        Args:
+          t0: Time
+            Start time.
+          x0: PhasePoint
+            Initial phase point.
+          t: Time
+            Current time.
+          x: PhasePoint
+            Current phase point.
+        Returns: bool
 
     Returns: Callable[[Time, PhasePoint], PhasePoint]
       Args:

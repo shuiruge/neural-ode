@@ -43,7 +43,7 @@ class DynamicalRungeKuttaSolver(DynamicalODESolver):
       t = t0
       x = x0
       dt = -self.dt if reverse else self.dt
-      while not stop_condition(t, x):
+      while not stop_condition(t0, x0, t, x):
         ks = self._rk_step(fn, t, x, dt)
         x = add(x, dx(*ks))
         t = t + dt
