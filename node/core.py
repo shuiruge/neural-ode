@@ -99,15 +99,6 @@ def get_node_function(solver, fn, signature=None):
   """
   forward = solver(fn)
 
-  def process_args(args):
-    """Converts tuple to list if args is multiple."""
-    if len(args) == 1:  # single arg in `*args`
-      return args[0]
-    else:
-      # `args` is a tuple, we need list instead for unifying
-      # the nesting structures
-      return list(args)
-
   if signature:
     dtype = signature[0].dtype
     time_spec_0 = tf.TensorSpec(shape=[], dtype=dtype)
@@ -129,28 +120,27 @@ def get_node_function(solver, fn, signature=None):
 
     @tf.custom_gradient
     def custom_gradient_fn(*x):
-      """For matching the signature of `tf.custom_gradient`
+      r"""For matching the signature of `tf.custom_gradient`
       https://tensorflow.google.cn/api_docs/python/tf/custom_gradient
 
       Explicitly, the inputs to this function shall be tensors, each as
       one arg; the output `grad_fn` accepts tensors, each as one arg, and
       kwargs involving the key "variables".
+
+      To make this API compatible with phase point, which is a nested structure
+      of tensors, we have to flatten the phase point before passing into this
+      function, and nest back within this function.
       """
+      # nest back the flatten phase point to the original
+      x = tf.nest.pack_sequence_as(x0, list(x))
 
-      # Using `*x` instead of `x` is for supporting multiple inputs.
-      # Otherwise TF will combine the multiple inputs into one tensor,
-      # which then will raise `ValueError` since the combination fails
-      # when the inputs do not share spec.
-
-      x = process_args(x)
       y = forward(t0, t1, x)
 
       # TF will catch all the variables watched by `tf.GradientTape`,
       # and pass them into the `grad_fn` via the `variables` kwarg.
       @tf.function
       def grad_fn(*grad_ys, **kwargs):
-        # converts tuple to list, for ensuring the correct nesting structure.
-        grad_ys = process_args(grad_ys)
+        grad_ys = tf.nest.pack_sequence_as(y, list(grad_ys))
 
         # XXX: `tf.custom_gradient` has an unfixed
         # [bug](https://github.com/tensorflow/tensorflow/issues/31945).
@@ -165,10 +155,7 @@ def get_node_function(solver, fn, signature=None):
 
       return y, grad_fn
 
-    if isinstance(x0, list):
-      return custom_gradient_fn(*x0)
-    else:
-      return custom_gradient_fn(x0)
+    return custom_gradient_fn(*tf.nest.flatten(x0))
 
   return node_fn
 
@@ -188,53 +175,46 @@ def get_dynamical_node_function(
   """
   forward = solver(fn)
 
-  def process_args(args):
-    if len(args) == 1:  # single arg in `**args`
-      return args[0]
-    else:
-      # `args` is a tuple, we need list instead for unifying
-      # the nesting structures
-      return list(args)
-
-  if signature is None:
-    input_signature = None
-  else:
-    time_spec = tf.TensorSpec(shape=[], dtype=t0.dtype)
+  if signature:
+    dtype = signature[0].dtype
+    time_spec = tf.TensorSpec(shape=[], dtype=dtype)
     input_signature = [time_spec] + signature
+  else:
+    input_signature = None
 
   @tf.function(input_signature=input_signature)
-  def node_fn(t, x):
+  def node_fn(t0, x0):
     """
     Args:
-      t: Time
-      x: PhasePoint
+      t0: Time
+      x0: PhasePoint
 
     Returns: PhasePoint
     """
+
     @tf.custom_gradient
     def custom_gradient_fn(*x):
-      """For matching the signature of `tf.custom_gradient`
+      r"""For matching the signature of `tf.custom_gradient`
       https://tensorflow.google.cn/api_docs/python/tf/custom_gradient
 
       Explicitly, the inputs to this function shall be tensors, each as
       one arg; the output `grad_fn` accepts tensors, each as one arg, and
       kwargs involving the key "variables".
+
+      To make this API compatible with phase point, which is a nested structure
+      of tensors, we have to flatten the phase point before passing into this
+      function, and nest back within this function.
       """
+      # nest back the flatten phase point to the original
+      x = tf.nest.pack_sequence_as(x0, list(x))
 
-      # Using `*x` instead of `x` is for supporting multiple inputs.
-      # Otherwise TF will combine the multiple inputs into one tensor,
-      # which then will raise `ValueError` since the combination fails
-      # when the inputs do not share spec.
-
-      x = process_args(x)
-      t1, y = forward(t, x)
+      t1, y = forward(t0, x)
 
       # TF will catch all the variables watched by `tf.GradientTape`,
       # and pass them into the `grad_fn` via the `variables` kwarg.
       @tf.function
       def grad_fn(*grad_ys, **kwargs):
-        # converts tuple to list, for ensuring the correct nesting structure.
-        grad_ys = process_args(grad_ys)
+        grad_ys = tf.nest.pack_sequence_as(y, list(grad_ys))
 
         # XXX: `tf.custom_gradient` has an unfixed
         # [bug](https://github.com/tensorflow/tensorflow/issues/31945).
@@ -244,14 +224,11 @@ def get_dynamical_node_function(
         variables = kwargs.get('variables', None)
 
         backward = reverse_mode_derivative(solver, fn, variables)
-        _, grad_by_x, grad_by_vars = backward(t, t1, y, grad_ys)
+        _, grad_by_x, grad_by_vars = backward(t0, t1, y, grad_ys)
         return [grad_by_x], grad_by_vars
 
       return y, grad_fn
 
-    if isinstance(x, list):
-      return custom_gradient_fn(*x)
-    else:
-      return custom_gradient_fn(x)
+    return custom_gradient_fn(*tf.nest.flatten(x0))
 
   return node_fn
