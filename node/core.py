@@ -160,10 +160,12 @@ def get_node_function(solver, fn, signature=None):
   return node_fn
 
 
-def get_dynamical_node_function(dynamial_solver, fn, signature=None):
+def get_dynamical_node_function(dynamical_solver, solver, fn, stop_condition,
+                                signature=None):
   r"""
   Args:
     dynamical_solver: DynamicalODESolver
+    XXX
     fn: PhaseVectorField
       The $f$ in the definition.
     signature: Nest[tf.TensorSpec]
@@ -171,7 +173,7 @@ def get_dynamical_node_function(dynamial_solver, fn, signature=None):
 
   Returns: PhaseVectorField
   """
-  forward = solver(fn)
+  forward = dynamical_solver(fn, stop_condition)
 
   if signature:
     dtype = signature[0].dtype

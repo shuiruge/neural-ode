@@ -119,7 +119,7 @@ class DynamicalRungeKuttaFehlbergSolver(DynamicalODESolver):
       succeed = True
       self._diagnostics.reset()
 
-      while not stop_condition(t, x):
+      while not stop_condition(t0, x0, t, x):
         accepted = False
 
         ks = self._rk_step(fn, t, x, dt)

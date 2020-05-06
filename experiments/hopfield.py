@@ -3,15 +3,20 @@
 import numpy as np
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
-from node.core import get_node_function
-from node.solvers.runge_kutta import RK4Solver
-from node.hopfield import hopfield
-from node.utils.callbacks import LayerInspector
+from node.core import get_node_function, get_dynamical_node_function
+from node.solvers.runge_kutta import RK4Solver, RKF56Solver
+from node.solvers.dynamical_runge_kutta import (
+  DynamicalRK4Solver, DynamicalRKF56Solver)
+from node.hopfield import hopfield, get_stop_condition
 
 
 # for reproducibility
 np.random.seed(42)
 tf.random.set_seed(42)
+
+
+SOLVER = 'rk4'
+# SOLVER = 'rkf56'
 
 
 class NodeLayer(tf.keras.layers.Layer):
@@ -24,7 +29,13 @@ class NodeLayer(tf.keras.layers.Layer):
     self.t = tf.convert_to_tensor(t)
     self.dt = tf.convert_to_tensor(dt)
 
-    solver = RK4Solver(self.dt)
+    if SOLVER == 'rk4':
+      solver = RK4Solver(self.dt)
+    elif SOLVER == 'rkf56':
+      solver = RKF56Solver(self.dt, tol=1e-2, min_dt=1e-1)
+    else:
+      raise ValueError()
+
     t0 = tf.constant(0.)
     self._node_fn = get_node_function(solver, t0, lambda _, x: fn(x))
 
@@ -41,29 +52,39 @@ class NodeLayer(tf.keras.layers.Layer):
 
 class HopfieldLayer(tf.keras.layers.Layer):
 
-  def __init__(self, fn, t, dt, lower_bounded_fn, **kwargs):
+  def __init__(self, fn, t0, dt, lower_bounded_fn, **kwargs):
     super().__init__(**kwargs)
 
-    self._config = {'fn': fn, 't': t, 'dt': dt,
+    self._config = {'fn': fn, 't0': t0, 'dt': dt,
                     'lower_bounded_fn': lower_bounded_fn}
 
     self.fn = fn
     self.lower_bounded_fn = lower_bounded_fn
 
-    self.t = tf.convert_to_tensor(t)
+    self.t0 = tf.convert_to_tensor(t0)
     self.dt = tf.convert_to_tensor(dt)
 
-    solver = RK4Solver(self.dt)
+    if SOLVER == 'rk4':
+      solver = RK4Solver(self.dt)
+      dynamical_solver = DynamicalRK4Solver(self.dt)
+    elif SOLVER == 'rkf56':
+      solver = RKF56Solver(self.dt, tol=1e-2, min_dt=1e-1)
+      dynamical_solver = DynamicalRKF56Solver(self.dt, tol=1e-2, min_dt=1e-1)
+    else:
+      raise ValueError()
+
     t0 = tf.constant(0.)
     energy = lambda x: lower_bounded_fn(fn(x))
     pvf = hopfield(energy)
+    stop_condition = get_stop_condition(pvf, max_delta_t=5, tolerance=1e-1)
 
     self.energy = energy
     self.pvf = pvf
-    self._node_fn = get_node_function(solver, t0, pvf)
+    self._node_fn = get_dynamical_node_function(
+      dynamical_solver, solver, pvf, stop_condition)
 
-  def call(self, x):
-    y = self._node_fn(self.t, x)
+  def call(self, x0):
+    y = self._node_fn(self.t0, x0)
     return y
 
   def get_config(self):
@@ -99,6 +120,7 @@ class HopfieldModel(tf.keras.Sequential):
     # numerical instability when doing integral (for ODE). Indeed,
     # using ReLU leads to NaN in practice.
     fn = tf.keras.Sequential([
+      # tf.keras.layers.Dense(256, activation='relu'),  # test!
       tf.keras.layers.Dense(1024, activation='relu'),
       tf.keras.layers.Dense(units, activation=None)])
 
@@ -132,17 +154,6 @@ class HopfieldModel(tf.keras.Sequential):
     for k, v in self._config.items():
       config[k] = v
     return config
-
-
-class Monitor(LayerInspector):
-  """C.f. the paper glorot10a."""
-
-  def __init__(self, samples, **kwargs):
-
-    def aspects(array):
-      return {'mean': np.mean(array), 'std': np.std(array)}
-
-    super().__init__(samples, aspects, **kwargs)
 
 
 def get_longer_period_model(model, t):
@@ -245,8 +256,7 @@ def get_non_node_model(node_model, x_train, y_train):
     optimizer=tf.optimizers.Nadam(1e-3),
     metrics=['accuracy'])
   non_node_model.fit(x_train, y_train,
-                     epochs=10, batch_size=128,
-                     verbose=2)
+                     epochs=10, batch_size=128)
   return non_node_model
 
 
@@ -260,28 +270,29 @@ if __name__ == '__main__':
   scalar.fit(x_train)
   x_train = scalar.transform(x_train)
 
+  @tf.function
+  def lower_bounded_fn(x):
+    return 5 * tf.sqrt(tf.reduce_sum(tf.square(x), axis=1))
+
   model = HopfieldModel(
     lower_bounded_fn, units=64, t=1.0, dt=0.1, layerized=False)
   model.compile(
     loss='categorical_crossentropy',
-    optimizer=tf.optimizers.Nadam(1e-3, epsilon=1e-3),
+    optimizer=tf.optimizers.Adam(1e-3, epsilon=1e-2),
     metrics=['accuracy'])
 
-  monitor = Monitor(samples=(x_train[:30], y_train[:30]))
   model.fit(x_train, y_train,
-            epochs=10, batch_size=128,
-            callbacks=[monitor],
-            verbose=2)
+            epochs=10, batch_size=128)
 
-  longer_period_effect(model, 3.0, x_train, y_train)
+  # longer_period_effect(model, 3.0, x_train, y_train)
 
-  # test noise effect
+  # # test noise effect
 
-  add_noise = add_white_noise(scalar, scale=0.03)
-  noised_effect(model, add_noise, x_train, y_train)
+  # add_noise = add_white_noise(scalar, scale=0.03)
+  # noised_effect(model, add_noise, x_train, y_train)
 
-  longer_period_model = get_longer_period_model(model, t=3.0)
-  noised_effect(longer_period_model, add_noise, x_train, y_train)
+  # longer_period_model = get_longer_period_model(model, t=3.0)
+  # noised_effect(longer_period_model, add_noise, x_train, y_train)
 
-  non_node_model = get_non_node_model(model, x_train, y_train)
-  noised_effect(non_node_model, add_noise, x_train, y_train)
+  # non_node_model = get_non_node_model(model, x_train, y_train)
+  # noised_effect(non_node_model, add_noise, x_train, y_train)
