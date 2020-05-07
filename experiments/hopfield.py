@@ -232,8 +232,7 @@ def get_non_node_model(node_model, x_train, y_train):
     optimizer=tf.optimizers.Adam(1e-3),
     metrics=['accuracy'])
   non_node_model.fit(x_train, y_train,
-                     epochs=10, batch_size=128,
-                     verbose=2)
+                     epochs=10, batch_size=128)
   return non_node_model
 
 
