@@ -3,10 +3,13 @@ import tensorflow as tf
 
 class InspectResult:
 
-  def __init__(self, batch, activations, gradients, weight_gradients):
-    self.batch = batch
+  def __init__(self, batch, loss, activations, gradients, weights,
+               weight_gradients):
+    self.batch = int(batch)
+    self.loss = float(loss)
     self.activations = activations
     self.gradients = gradients
+    self.weights = weights
     self.weight_gradients = weight_gradients
 
 
@@ -34,7 +37,7 @@ class LayerInspector(tf.keras.callbacks.Callback):
       Kwargs of `tf.keras.callbacks.Callback`.
   """
 
-  def __init__(self, samples, aspects, skip_step=10, **kwargs):
+  def __init__(self, samples, aspects, skip_step, **kwargs):
     super().__init__(**kwargs)
     self.samples = samples
     self.aspects = aspects
@@ -47,7 +50,8 @@ class LayerInspector(tf.keras.callbacks.Callback):
 
   def on_train_batch_end(self, batch, logs=None):
     if batch % self.skip_step == 0:
-      self.logs.append(self._inspect(batch))
+      log = self._inspect(batch)
+      self.logs.append(log)
 
   def on_train_begin(self, logs=None):
     assert isinstance(self.model, tf.keras.Sequential)
@@ -73,7 +77,7 @@ class LayerInspector(tf.keras.callbacks.Callback):
       with tf.GradientTape() as g:
         g.watch(x)
         y = layer(x)
-      activations.append(self.aspects(y.numpy()))
+      activations.append({layer.name: self.aspects(y.numpy())})
       gradient_triplets.append((g, x, y))
       x = y
 
@@ -82,14 +86,23 @@ class LayerInspector(tf.keras.callbacks.Callback):
       g.watch(y)
       l = loss(self._y, y)
     grad = g.gradient(l, y, unconnected_gradients='zero')
-    gradients.append(self.aspects(grad.numpy()))
+
+    name = f'{layers[-1].name} -> Loss'
+    gradients.append({name: self.aspects(grad.numpy())})
 
     # backward propagate
+    i = len(layers) - 1
     for g, x, y in gradient_triplets[::-1]:
       grad = g.gradient(y, x, grad, unconnected_gradients='zero')
-      gradients.append(self.aspects(grad.numpy()))
 
-    gradients.reverse()
+      if i - 1 < 0:
+        name = f'Input -> {layers[0].name}'
+      else:
+        name = f'{layers[i - 1].name} -> {layers[i].name}'
+      gradients.append({name: self.aspects(grad.numpy())})
+      i -= 1
+
+    gradients = gradients[::-1]
 
     # to compute the dL / dv for v in variables, we have to do
     # forward and backward computations once again
@@ -100,4 +113,9 @@ class LayerInspector(tf.keras.callbacks.Callback):
     weight_gradients = {v.name: self.aspects(g.numpy())
                         for v, g in zip(variables, grad_vars)}
 
-    return InspectResult(batch, activations, gradients, weight_gradients)
+    loss_val = l.numpy()
+
+    weights = {v.name: self.aspects(v.numpy()) for v in variables}
+
+    return InspectResult(batch, loss_val, activations, gradients, weights,
+                         weight_gradients)
