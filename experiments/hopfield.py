@@ -27,9 +27,24 @@ class Monitor(LayerInspector):
 
     def aspects(x):
       # convert from `np.float32` to `float` for serialization
-      return {'mean': float(np.mean(x)), 'std': float(np.std(x))}
+      return {'mean': float(np.mean(x)),
+              'std': float(np.std(x)),
+              'maxabs': float(np.max(np.abs(x))),
+              'minabs': float(np.min(np.abs(x)))}
 
     super().__init__(samples, aspects, skip_step, **kwargs)
+
+  def _inspect(self, batch):
+    result = super()._inspect(batch)
+
+    # monitor the optimizer
+    optimizer = self.model.optimizer
+    optimizer_info = {
+      v.name: self.aspects(v.numpy()) for v in optimizer.variables()}
+    result.extra_info = {'optimizer': optimizer_info}
+
+    return result
+
 
 
 class NodeLayer(tf.keras.layers.Layer):
@@ -90,6 +105,7 @@ class HopfieldLayer(tf.keras.layers.Layer):
     t0 = tf.constant(0.)
     energy = lambda x: lower_bounded_fn(fn(x))
     pvf = hopfield(energy)
+
     stop_condition = get_stop_condition(pvf, max_delta_t=5.0, tolerance=1e-2)
 
     self.energy = energy
@@ -100,9 +116,9 @@ class HopfieldLayer(tf.keras.layers.Layer):
   def call(self, x0):
     y = self._node_fn(self.t0, x0)
 
-    mean_square = tf.reduce_mean(tf.square(y))
-    threshold = tf.constant(1.)
-    regularizer = tf.math.maximum(mean_square, threshold) - threshold
+    max_abs = tf.reduce_max(tf.math.abs(y))
+    threshold = tf.constant(10.)
+    regularizer = tf.math.maximum(max_abs, threshold) - threshold
     self.add_loss(regularizer, inputs=True)
 
     return y
@@ -254,14 +270,15 @@ if __name__ == '__main__':
     lower_bounded_fn, units=64, t=1.0, dt=0.1, layerized=False)
   model.compile(
     loss=tf.losses.CategoricalCrossentropy(from_logits=True),
-    # optimizer=tf.optimizers.Adamax(1e-3),  # XXX: test!
-    optimizer=tf.optimizers.Adam(1e-3, amsgrad=True, epsilon=1e-3),
+    # optimizer=tf.optimizers.Adagrad(1e-3),  # XXX: test!
+    optimizer=tf.optimizers.Adam(1e-3, epsilon=1e-3),
     metrics=['accuracy'])
 
   monitor = Monitor(samples=(x_train[:128], y_train[:128]), skip_step=1)
 
-  for i in range(10):
-    print(f'EPOCH: {i + 1}/10')
+  epochs = 5
+  for i in range(epochs):
+    print(f'EPOCH: {i + 1}/{epochs}')
     model.fit(x_train, y_train, batch_size=128, callbacks=[monitor], verbose=2)
     model.save_weights('../dat/weights.h5')
     with open('../dat/monitor_logs.yaml', 'w') as f:

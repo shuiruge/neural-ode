@@ -4,13 +4,14 @@ import tensorflow as tf
 class InspectResult:
 
   def __init__(self, batch, loss, activations, gradients, weights,
-               weight_gradients):
+               weight_gradients, extra_info=None):
     self.batch = int(batch)
     self.loss = float(loss)
     self.activations = activations
     self.gradients = gradients
     self.weights = weights
     self.weight_gradients = weight_gradients
+    self.extra_info = extra_info
 
 
 class LayerInspector(tf.keras.callbacks.Callback):
