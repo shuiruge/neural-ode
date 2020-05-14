@@ -1,9 +1,15 @@
-"""Utils for experimenting on the continuum of Hopfield."""
+r"""
+CONCLUSION:
+
+    * It seems that it is the bad data point that leads to the instability.
+
+"""
 
 import yaml
 import numpy as np
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils import shuffle
 from node.core import get_node_function, get_dynamical_node_function
 from node.solvers.runge_kutta import RK4Solver, RKF56Solver
 from node.solvers.dynamical_runge_kutta import (
@@ -13,8 +19,9 @@ from node.utils.callbacks import LayerInspector
 
 
 # for reproducibility
-np.random.seed(42)
-tf.random.set_seed(42)
+SEED = 42
+np.random.seed(SEED)
+tf.random.set_seed(SEED)
 
 
 SOLVER = 'rk4'
@@ -103,7 +110,14 @@ class HopfieldLayer(tf.keras.layers.Layer):
       raise ValueError()
 
     t0 = tf.constant(0.)
-    energy = lambda x: lower_bounded_fn(fn(x))
+
+    # test!
+    # def energy(x):
+    #   return tf.reduce_mean(tf.square(x)) + lower_bounded_fn(fn(x))
+
+    def energy(x):
+      return lower_bounded_fn(fn(x))
+
     pvf = hopfield(energy)
 
     stop_condition = get_stop_condition(pvf, max_delta_t=5.0, tolerance=1e-2)
@@ -156,6 +170,7 @@ class HopfieldModel(tf.keras.Sequential):
     # numerical instability when doing integral (for ODE). Indeed,
     # using ReLU leads to NaN in practice.
     fn = tf.keras.Sequential([
+        tf.keras.Input([units]),
         tf.keras.layers.Dense(1024, activation='relu'),
         tf.keras.layers.Dense(units, activation=None)
       ], name='HopfieldFn')
@@ -248,7 +263,7 @@ def get_non_node_model(node_model, x_train, y_train):
     optimizer=tf.optimizers.Adam(1e-3),
     metrics=['accuracy'])
   non_node_model.fit(x_train, y_train,
-                     epochs=10, batch_size=128)
+                     epochs=5, batch_size=128)
   return non_node_model
 
 
@@ -262,24 +277,42 @@ if __name__ == '__main__':
   scalar.fit(x_train)
   x_train = scalar.transform(x_train)
 
+  x_train, y_train = shuffle(x_train, y_train, random_state=SEED)
+
+  # test!
+  num_data = 1000
+  x_train = x_train[:num_data]
+  y_train = y_train[:num_data]
+
+  @tf.custom_gradient
+  def sqrt(x):
+    y = tf.sqrt(x)
+
+    def grad_fn(dy):
+      return 0.5 * dy / (y + 1e-8)
+
+    return y, grad_fn
+
   @tf.function
   def lower_bounded_fn(x):
-    return 5 * tf.sqrt(tf.reduce_sum(tf.square(x), axis=1))
+    return 5 * sqrt(tf.reduce_sum(tf.square(x), axis=1))
 
   model = HopfieldModel(
     lower_bounded_fn, units=64, t=1.0, dt=0.1, layerized=False)
   model.compile(
     loss=tf.losses.CategoricalCrossentropy(from_logits=True),
     # optimizer=tf.optimizers.Adagrad(1e-3),  # XXX: test!
-    optimizer=tf.optimizers.Adam(1e-3, epsilon=1e-3),
+    optimizer=tf.optimizers.Adam(1e-3, clipvalue=1.),
     metrics=['accuracy'])
 
   monitor = Monitor(samples=(x_train[:128], y_train[:128]), skip_step=1)
 
-  epochs = 5
+  epochs = 150
   for i in range(epochs):
     print(f'EPOCH: {i + 1}/{epochs}')
-    model.fit(x_train, y_train, batch_size=128, callbacks=[monitor], verbose=2)
+    model.fit(x_train, y_train, batch_size=128,
+              # callbacks=[monitor],
+              verbose=2)
     model.save_weights('../dat/weights.h5')
     with open('../dat/monitor_logs.yaml', 'w') as f:
       logs = [log.__dict__ for log in monitor.logs]
