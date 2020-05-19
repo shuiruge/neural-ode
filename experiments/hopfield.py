@@ -15,7 +15,7 @@ from node.solvers.runge_kutta import RK4Solver, RKF56Solver
 from node.solvers.dynamical_runge_kutta import (
   DynamicalRK4Solver, DynamicalRKF56Solver)
 from node.hopfield import hopfield, get_stop_condition
-from node.utils.callbacks import LayerInspector
+from node.utils.layers import TracedModel, get_loss
 
 
 # for reproducibility
@@ -24,34 +24,11 @@ np.random.seed(SEED)
 tf.random.set_seed(SEED)
 
 
+tf.keras.backend.clear_session()
+
+
 SOLVER = 'rk4'
 # SOLVER = 'rkf56'
-
-
-class Monitor(LayerInspector):
-
-  def __init__(self, samples, skip_step, **kwargs):
-
-    def aspects(x):
-      # convert from `np.float32` to `float` for serialization
-      return {'mean': float(np.mean(x)),
-              'std': float(np.std(x)),
-              'maxabs': float(np.max(np.abs(x))),
-              'minabs': float(np.min(np.abs(x)))}
-
-    super().__init__(samples, aspects, skip_step, **kwargs)
-
-  def _inspect(self, batch):
-    result = super()._inspect(batch)
-
-    # monitor the optimizer
-    optimizer = self.model.optimizer
-    optimizer_info = {
-      v.name: self.aspects(v.numpy()) for v in optimizer.variables()}
-    result.extra_info = {'optimizer': optimizer_info}
-
-    return result
-
 
 
 class NodeLayer(tf.keras.layers.Layer):
@@ -261,59 +238,70 @@ def get_non_node_model(node_model, x_train, y_train):
   non_node_model.compile(
     loss=node_model.loss,
     optimizer=tf.optimizers.Adam(1e-3),
-    metrics=['accuracy'])
+    metrics=['accuracy'],
+  )
   non_node_model.fit(x_train, y_train,
                      epochs=5, batch_size=128)
   return non_node_model
 
 
-if __name__ == '__main__':
+# ---------------------------- doing experiments below -------------------------
 
-  mnist = tf.keras.datasets.mnist
-  (x_train, y_train), _ = mnist.load_data()
-  x_train, y_train = process(x_train, y_train)
 
-  scalar = StandardScaler()
-  scalar.fit(x_train)
-  x_train = scalar.transform(x_train)
+mnist = tf.keras.datasets.mnist
+(x_train, y_train), _ = mnist.load_data()
+x_train, y_train = process(x_train, y_train)
 
-  x_train, y_train = shuffle(x_train, y_train, random_state=SEED)
+scalar = StandardScaler()
+scalar.fit(x_train)
+x_train = scalar.transform(x_train)
 
-  # test!
-  num_data = 1000
-  x_train = x_train[:num_data]
-  y_train = y_train[:num_data]
+x_train, y_train = shuffle(x_train, y_train, random_state=SEED)
 
-  @tf.custom_gradient
-  def sqrt(x):
-    y = tf.sqrt(x)
+# test!
+num_data = 1000
+x_train = x_train[:num_data]
+y_train = y_train[:num_data]
 
-    def grad_fn(dy):
-      return 0.5 * dy / (y + 1e-8)
+@tf.custom_gradient
+def sqrt(x):
+  y = tf.sqrt(x)
 
-    return y, grad_fn
+  def grad_fn(dy):
+    return 0.5 * dy / (y + 1e-8)
 
-  @tf.function
-  def lower_bounded_fn(x):
-    return 5 * sqrt(tf.reduce_sum(tf.square(x), axis=1))
+  return y, grad_fn
 
-  model = HopfieldModel(
-    lower_bounded_fn, units=64, t=1.0, dt=0.1, layerized=False)
-  model.compile(
-    loss=tf.losses.CategoricalCrossentropy(from_logits=True),
-    # optimizer=tf.optimizers.Adagrad(1e-3),  # XXX: test!
-    optimizer=tf.optimizers.Adam(1e-3, clipvalue=1.),
-    metrics=['accuracy'])
+@tf.function
+def lower_bounded_fn(x):
+  return 5 * sqrt(tf.reduce_sum(tf.square(x), axis=1))
 
-  monitor = Monitor(samples=(x_train[:128], y_train[:128]), skip_step=1)
+model = HopfieldModel(
+  lower_bounded_fn, units=64, t=1.0, dt=0.1, layerized=False)
+model = TracedModel(model)
+model.compile(
+  loss=tf.losses.CategoricalCrossentropy(from_logits=True),
+  optimizer=tf.optimizers.Adam(1e-3),
+)
 
-  epochs = 150
-  for i in range(epochs):
-    print(f'EPOCH: {i + 1}/{epochs}')
-    model.fit(x_train, y_train, batch_size=128,
-              # callbacks=[monitor],
-              verbose=2)
-    model.save_weights('../dat/weights.h5')
-    with open('../dat/monitor_logs.yaml', 'w') as f:
-      logs = [log.__dict__ for log in monitor.logs]
-      f.write(yaml.dump(logs))
+# use custom training loop for the convenience of doing experiments
+dataset = (tf.data.Dataset.from_tensor_slices((x_train, y_train))
+           .repeat(10)
+           .batch(128))
+loss_avg = tf.keras.metrics.Mean()
+accuracy = tf.keras.metrics.CategoricalAccuracy()
+
+for step, (X, y_true) in enumerate(dataset):
+  with tf.GradientTape() as g:
+    y_pred = model(X)
+    loss = model.loss(y_true, y_pred)
+  grads = g.gradient(loss, model.trainable_variables)
+  model.optimizer.apply_gradients(zip(grads, model.trainable_variables))
+
+  loss_avg.update_state(loss)
+  accuracy.update_state(y_true, model(X, training=True))
+
+  if step % 10 == 0:
+    tf.print('step', step,
+             '- loss', loss_avg.result(),
+             '- acc', accuracy.result())
