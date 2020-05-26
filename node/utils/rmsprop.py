@@ -18,12 +18,12 @@ def rmsprop(dynamics, gamma=1e-0, eps=1e-7):
 
   References:
     1. https://ruder.io/optimizing-gradient-descent/index.html#rmsprop
-  
+
   Args:
     dynamics: PhaseVectorField
     gamma: float
     eps: float
-  
+
   Returns: PhaseVectorField
   """
 
@@ -34,7 +34,7 @@ def rmsprop(dynamics, gamma=1e-0, eps=1e-7):
   @nest_map
   def inv_rms(ms):
     return 1 / tf.sqrt(ms + eps)
-  
+
   @tf.function
   def rmsprop_dynamics(t, x):
     z, ms = x

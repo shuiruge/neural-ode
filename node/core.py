@@ -33,7 +33,6 @@ def reverse_mode_derivative(ode_solver, network, variables):
       and $\partial L / \partial \theta_i^{\alpha}$, respectively.
   """
 
-  @tf.function
   def aug_dynamics(time, aug_phase_point):
     state, adjoint, *_ = aug_phase_point
     neg_adjoint = _negate(adjoint)
@@ -54,7 +53,6 @@ def reverse_mode_derivative(ode_solver, network, variables):
 
   forward = ode_solver(aug_dynamics)
 
-  @tf.function
   def backward(start_time, end_time, final_state, final_loss_gradient):
     final_phase_point = [final_state, final_loss_gradient]
     for var in variables:
@@ -74,7 +72,7 @@ def _negate(x):
   return -1 * x
 
 
-def get_node_function(solver, fn, signature=None):
+def get_node_function(solver, fn):
   r"""
 
   ```math
@@ -92,8 +90,6 @@ def get_node_function(solver, fn, signature=None):
     solver: ODESolver
     fn: PhaseVectorField
       The $f$ in the definition.
-    signature: Nest[tf.TensorSpec]
-      The signature of the phase point `x` in the definition.
 
   Returns: PhaseVectorField
   """
@@ -107,7 +103,6 @@ def get_node_function(solver, fn, signature=None):
   else:
     input_signature = None
 
-  @tf.function(input_signature=input_signature)
   def node_fn(t0, t1, x0):
     """
     Args:
@@ -138,7 +133,6 @@ def get_node_function(solver, fn, signature=None):
 
       # TF will catch all the variables watched by `tf.GradientTape`,
       # and pass them into the `grad_fn` via the `variables` kwarg.
-      @tf.function
       def grad_fn(*grad_ys, **kwargs):
         grad_ys = tf.nest.pack_sequence_as(y, list(grad_ys))
 
@@ -160,29 +154,18 @@ def get_node_function(solver, fn, signature=None):
   return node_fn
 
 
-def get_dynamical_node_function(dynamical_solver, solver, fn, stop_condition,
-                                signature=None):
+def get_dynamical_node_function(dynamical_solver, solver, fn, stop_condition):
   r"""
   Args:
     dynamical_solver: DynamicalODESolver
     XXX
     fn: PhaseVectorField
       The $f$ in the definition.
-    signature: Nest[tf.TensorSpec]
-      The signature of the phase point `x` in the definition.
 
   Returns: PhaseVectorField
   """
   forward = dynamical_solver(fn, stop_condition)
 
-  if signature:
-    dtype = signature[0].dtype
-    time_spec = tf.TensorSpec(shape=[], dtype=dtype)
-    input_signature = [time_spec] + signature
-  else:
-    input_signature = None
-
-  @tf.function(input_signature=input_signature)
   def node_fn(t0, x0):
     """
     Args:
@@ -212,7 +195,6 @@ def get_dynamical_node_function(dynamical_solver, solver, fn, stop_condition,
 
       # TF will catch all the variables watched by `tf.GradientTape`,
       # and pass them into the `grad_fn` via the `variables` kwarg.
-      @tf.function
       def grad_fn(*grad_ys, **kwargs):
         grad_ys = tf.nest.pack_sequence_as(y, list(grad_ys))
 

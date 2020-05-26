@@ -22,7 +22,6 @@ def neg(x):
   return scalar_product(-1, x)
 
 
-@tf.function
 def sign(x):
   r"""Like `tf.sign`, but keeps the dtype.
 
@@ -84,7 +83,6 @@ class RungeKuttaStep:
     Returns: tf.Tensor
     """
 
-    @tf.function
     def runge_kutta_step(t, x, dt):
       k0 = scalar_product(dt, fn(t, x))
       ks = [k0]
@@ -136,7 +134,6 @@ class RungeKuttaSolver(ODESolver):
     def dx(*ks):
       return sum(ci * ki for ci, ki in zip(self.c, ks))
 
-    @tf.function
     def forward(t0, t1, x0):
       s = sign(t1 - t0)
       t = t0
@@ -218,7 +215,6 @@ class RungeKuttaFehlbergSolver(ODESolver):
 
       return norm(_rs(*ks))
 
-    @tf.function
     def forward(t0, t1, x0):
       s = sign(t1 - t0)
       t = t0

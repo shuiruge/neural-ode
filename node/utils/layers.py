@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Layer
-from typing import Dict, Any
+from typing import Tuple
 
 
 class Hook:
@@ -93,7 +93,7 @@ def get_loss(model: tf.keras.Model) -> tf.losses.Loss:
 
   elif isinstance(model.loss, str):
     # may be sample-wize loss function
-    loss_fn = tf.keras.losses.get(model.loss)
+    loss_fn = getattr(tf.keras.losses, model.loss)
 
     def loss(y_true, y_pred):
       return tf.reduce_mean(loss_fn(y_true, y_pred))
@@ -104,7 +104,10 @@ def get_loss(model: tf.keras.Model) -> tf.losses.Loss:
   return loss
 
 
-def get_layerwise_gradients(model, inputs, targets):
+def get_layerwise_gradients(model: TracedModel,
+                            inputs: tf.Tensor,
+                            targets: tf.Tensor
+                            ) -> [Tuple[tf.Tensor, tf.Tensor]]:
   assert isinstance(model, TracedModel)
 
   with tf.GradientTape(persistent=True) as g:
@@ -115,53 +118,31 @@ def get_layerwise_gradients(model, inputs, targets):
     loss = get_loss(model)(targets, predictions)
 
   gradients = []
-  for x, y in model.trace:
-    gradients.append(
-      (g.gradient(loss, x), g.gradient(loss, y)))
+  for layer_inputs, layer_outputs in model.trace:
+    grad_by_layer_inputs = g.gradient(loss, layer_inputs)
+    grad_by_layer_outputs = g.gradient(loss, layer_outputs)
+    gradients.append((grad_by_layer_inputs, grad_by_layer_outputs))
   return gradients
 
 
-def get_optimizer_variables(model):
+def get_optimizer_variables(model: tf.keras.Model) -> [tf.Variable]:
   return model.optimizer.variables
 
 
-def get_layer_activations(model):
+def get_layer_activations(model: TracedModel) -> [tf.Tensor]:
   assert isinstance(model, TracedModel)
   layers = model.traced_layers
-  activations = [outputs for inputs, outputs in model.trace]
-  return {layer.name: act for layer, act in zip(layers, activations)}
+  return [outputs for inputs, outputs in model.trace]
 
 
-def get_weights(model):
+def get_weights(model: tf.keras.Model) -> [tf.Variable]:
   return model.trainable_variables
 
 
-def get_weight_gradiants(model, inputs, targets):
+def get_weight_gradiants(model: tf.keras.Model,
+                         inputs: tf.Tensor,
+                         targets: tf.Tensor) -> [tf.Tensor]:
   with tf.GradientTape() as g:
+    predictions = model(inputs)
     loss = get_loss(model)(targets, predictions)
-  return g.gradients(loss, get_weights(model))
-
-
-class Inspector(tf.keras.callbacks.Callback):
-  """Inspects the activations and gradients acrossing layers."""
-
-  def __init__(self,
-               inspect_activations: bool,
-               inspect_gradients: bool,
-               inspect_weights: bool,
-               inspect_weight_gradients: bool):
-    self.inspect_activations = inspect_activations
-    self.inspect_gradients = inspect_gradients
-    self.inspect_weights = inspect_weights
-    self.inspect_weight_gradients = inspect_weight_gradients
-
-    self._inspection_report: Dict[str, tf.Tensor] = {}
-
-  def get_aspects(self, tensor: tf.Tensor) -> Dict[str, np.array]:
-    return NotImplemented
-
-  def _inspect(self):
-    if self.inspect_activations: 
-      self._inspection_report['activations'] = get_activations(self.model)
-    if self.inspect_gradients:
-      self._inspection_report['gradients'] = get_layerwise_gradients
+  return g.gradient(loss, get_weights(model))

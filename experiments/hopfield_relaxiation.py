@@ -21,7 +21,7 @@ from node.solvers.dynamical_runge_kutta import (
   DynamicalRK4Solver, DynamicalRKF56Solver)
 from node.utils.rmsprop import rmsprop
 from node.utils.nest import nest_map
-from node.hopfield import hopfield, get_stop_condition
+from node.hopfield import hopfield
 from node.utils.layers import (TracedModel, get_layer_activations,
                                get_layerwise_gradients, get_weights,
                                get_weight_gradiants, get_optimizer_variables)
@@ -36,8 +36,11 @@ tf.random.set_seed(SEED)
 tf.keras.backend.clear_session()
 
 
-SOLVER = 'rk4'
-# SOLVER = 'rkf56'
+# SOLVER = 'rk4'
+SOLVER = 'rkf56'
+
+
+_LOG = []
 
 
 class HopfieldLayer(tf.keras.layers.Layer):
@@ -64,48 +67,52 @@ class HopfieldLayer(tf.keras.layers.Layer):
       raise ValueError()
 
     def energy(x):
-      return lower_bounded_fn(fn(x))
+      # return lower_bounded_fn(fn(x))
+      return tf.reduce_mean(tf.square(x) + tf.tanh(fn(x)), axis=-1)
 
-    pvf = hopfield(energy)
+    def pvf(_, x):
+      with tf.GradientTape() as g:
+        g.watch(x)
+        e = energy(x)
+      return -g.gradient(e, x, unconnected_gradients='zero')
 
-    max_delta_t=100.0
-    tolerance=1e-1
+    # boosted_pvf = rmsprop(pvf, eps=1e-3)
 
+    max_delta_t = 30.0
+    tolerance = 1e-2
+
+    @tf.function
     def stop_condition(t0, x0, t, x):
+      # tf.print(tf.math.top_k(tf.abs(pvf(t, x)), k=5)[0][:3])
+      tf.print('pvf:', tf.abs(pvf(t, x))[0])
+      tf.print('energy:', energy(x)[:3])
       if tf.abs(t - t0) > max_delta_t:
-        tf.print('hahaha')  # XXX: test!
+        tf.print('reached max delta t......')
         return True
-      max_abs_velocity = tf.reduce_max(tf.abs(pvf(t, x[0])))
+      max_abs_velocity = tf.reduce_mean(tf.abs(pvf(t, x)))
+      # max_abs_velocity = tf.reduce_mean(tf.reduce_max(tf.abs(pvf(t, x)), axis=-1))
       if max_abs_velocity < tolerance:
-        tf.print('------------!!!!!!!!!!!!!!!!!!---------------')  # XXX: test!
+        tf.print('relaxed!!!')
         return True
-      tf.print('max_vel - ', max_abs_velocity)  # XXX: test!
       return False
 
-    def pvf_2(t, x):
-      x = rmsprop(pvf, eps=1e-3)(t, x)
-      return x
-
     self.energy = energy
-    self.pvf = pvf_2
+    self.pvf = pvf
+    # self.boosted_pvf = boosted_pvf
     self._node_fn = get_dynamical_node_function(
-      dynamical_solver, solver, pvf_2, stop_condition)
+      dynamical_solver, solver, pvf, stop_condition)
 
+  @tf.function
   def call(self, x0):
     t0 = tf.constant(0.)
 
-    ms = nest_map(lambda x: tf.ones_like(x))(x0)
-    x0 = (x0, ms)
+    # ms = nest_map(lambda x: tf.ones_like(x))(x0)
+    # x0 = (x0, ms)
 
     y = self._node_fn(t0, x0)
 
-    y = y[0]
-
-    max_abs = tf.reduce_max(tf.math.abs(y))
-    threshold = tf.constant(10.)
-    regularizer = tf.math.maximum(max_abs, threshold) - threshold
-    self.add_loss(regularizer, inputs=True)
-
+    # y = y[0]
+    tf.print(y[:3])
     return y
 
   def get_config(self):
@@ -173,109 +180,6 @@ def process_data(X, y):
   return X.astype('float32'), y.astype('float32')
 
 
-def random_flip(binary, flip_ratio):
-
-  def flip(binary):
-    return np.where(binary > 0.5,
-                    np.zeros_like(binary),
-                    np.ones_like(binary))
-
-  if_flip = np.random.random(size=binary.shape) < flip_ratio
-  return np.where(if_flip, flip(binary), binary)
-
-
-def add_random_flip_noise(scalar, flip_ratio):
-
-  def add_noise(x):
-    # get noised_x_train
-    x_orig = scalar.inverse_transform(x)
-    noised_x_orig = random_flip(x_orig, flip_ratio)
-    noised_x = scalar.transform(noised_x_orig)
-    return noised_x
-
-  return add_noise
-
-
-def add_white_noise(noise_scale):
-
-  def add_noise(x):
-    return x + np.random.normal(scale=noise_scale, size=x.shape)
-
-  return add_noise
-
-
-def noised_effect(model, add_noise, x_train, y_train):
-  base_score = model.evaluate(x_train, y_train, verbose=0)
-
-  noised_x_train = add_noise(x_train)
-  noised_score = model.evaluate(noised_x_train, y_train, verbose=0)
-
-  print('Noised effect:')
-  for i in range(2):
-    print(f'{base_score[i]:.5f} => {noised_score[i]:.5f}')
-
-
-def remove_outliers(array, min_val, max_val):
-  ids = []
-  high_quality_samples = []
-  for i, sample in enumerate(array):
-    if sample.min() >= min_val and sample.max() < max_val:
-      ids.append(i)
-      high_quality_samples.append(sample)
-  return np.array(ids), np.stack(high_quality_samples)
-
-
-def inspect(model, inputs, targets):
-  inspection_report = {}
-
-  inspection_report['inputs'] = {
-    'max': inputs.numpy().max(),
-    'min': inputs.numpy().min(),
-  }
-
-  inspection_report['loss'] = loss.numpy()
-
-  dws = get_weight_gradiants(model, X, y_true)
-  grads = get_layerwise_gradients(model, X, y_true)
-  activations = get_layer_activations(model)
-  opt_vars = model.optimizer.variables()
-
-  def describe_tensor(tensor):
-    return {
-      'maxabs': np.abs(tensor.numpy()).max(),
-      'minabs': np.abs(tensor.numpy()).min(),
-      'mean': tensor.numpy().mean(),
-      'std': tensor.numpy().std(),
-    }
-
-  inspection_report['weight gradients'] = {
-    w.name: describe_tensor(dw)
-    for w, dw in zip(model.trainable_variables, dws)
-  }
-
-  inspection_report['layerwise gradients'] = {
-    layer.name: {
-      'grad_by_inputs': describe_tensor(grad_x),
-      'grad_by_outputs': describe_tensor(grad_y),
-    }
-    for layer, (grad_x, grad_y) in zip(model.traced_layers, grads)
-  }
-
-  inspection_report['layerwise activations'] = {
-    layer.name: describe_tensor(activation)
-    for layer, activation in zip(model.traced_layers, activations)
-  }
-
-  inspection_report['optimizer variables'] = {
-    w.name: describe_tensor(w)
-    for w in opt_vars
-  }
-  return inspection_report
-
-
-# ---------------------------- doing experiments below -------------------------
-
-
 mnist = tf.keras.datasets.mnist
 (x_train, y_train), _ = mnist.load_data()
 x_train, y_train = process_data(x_train, y_train)
@@ -308,7 +212,6 @@ def sqrt(x):
 
   return y, grad_fn
 
-@tf.function
 def lower_bounded_fn(x):
   return 5 * sqrt(tf.reduce_sum(tf.square(x), axis=1))
 
@@ -325,30 +228,15 @@ model.compile(
 # use custom training loop for the convenience of doing experiments
 dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
 
-previous_loss = None
-inspection_reports = []
+print('start training')
 
-epochs = 20
-for epoch in range(epochs):
-  print(f'EPOCH {epoch + 1}/{epochs}')
-
-  for step, (X, y_true) in enumerate(dataset.batch(128)):
-    print(step)
+for epoch in range(10):
+  for step, (X, y_true) in enumerate(dataset.batch(32)):
+    tf.print('step', step)
     with tf.GradientTape() as g:
       y_pred = model(X)
       loss = model.loss(y_true, y_pred)
     grads = g.gradient(loss, model.trainable_variables)
     model.optimizer.apply_gradients(zip(grads, model.trainable_variables))
-
-    if previous_loss is None or loss < 2 * previous_loss:
-      previous_loss = loss
-    else:
-      # raise ValueError()
-      pass
-
-  # model.evaluate(x_train, y_train, verbose=2)
-
-  # if step % 5 == 0:
-  #   inspection_reports.append(inspect(model, X, y_true))
-
-noised_effect(model, add_white_noise(0.5), x_train, y_train)
+    tf.print('loss', loss)
+  model.evaluate(x_train, y_train, verbose=2)
