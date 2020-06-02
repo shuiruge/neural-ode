@@ -78,8 +78,8 @@ class HopfieldLayer(tf.keras.layers.Layer):
 
     # boosted_pvf = rmsprop(pvf, eps=1e-3)
 
-    max_delta_t = 30.0
-    tolerance = 1e-2
+    max_delta_t = 50.0
+    tolerance = 5e-2
 
     @tf.function
     def stop_condition(t0, x0, t, x):
@@ -89,10 +89,10 @@ class HopfieldLayer(tf.keras.layers.Layer):
       if tf.abs(t - t0) > max_delta_t:
         tf.print('reached max delta t......')
         return True
-      max_abs_velocity = tf.reduce_mean(tf.abs(pvf(t, x)))
-      # max_abs_velocity = tf.reduce_mean(tf.reduce_max(tf.abs(pvf(t, x)), axis=-1))
+      # max_abs_velocity = tf.reduce_mean(tf.abs(pvf(t, x)))
+      max_abs_velocity = tf.reduce_mean(tf.reduce_max(tf.abs(pvf(t, x)), axis=-1))
       if max_abs_velocity < tolerance:
-        tf.print('relaxed!!!')
+        tf.print('----------------- relaxed!!! ----------------')
         return True
       return False
 
@@ -152,8 +152,13 @@ class HopfieldModel(tf.keras.Sequential):
     ]
 
     layers.append(HopfieldLayer(fn, dt, lower_bounded_fn))
+    layers.append(
+      tf.keras.layers.LayerNormalization(name='HopfieldLayerNorm'))
 
-    layers.append(tf.keras.layers.Dense(10, name='OutputLogits'))
+    layers += [
+      tf.keras.layers.Dense(128, name='Hidden'),
+      tf.keras.layers.Dense(10, name='OutputLogits'),
+    ]
 
     super().__init__(layers=layers, **kwargs)
 
@@ -178,6 +183,30 @@ def process_data(X, y):
   X = np.reshape(X, [-1, 28 * 28])
   y = np.eye(10)[y]
   return X.astype('float32'), y.astype('float32')
+
+
+def random_flip(binary, flip_ratio):
+
+  def flip(binary):
+    return np.where(binary > 0.5,
+                    # np.zeros_like(binary),
+                    np.ones_like(binary),
+                    np.ones_like(binary))
+
+  if_flip = np.random.random(size=binary.shape) < flip_ratio
+  return np.where(if_flip, flip(binary), binary)
+
+
+def add_random_flip_noise(scalar, flip_ratio):
+
+  def add_noise(x):
+    # get noised_x_train
+    x_orig = scalar.inverse_transform(x)
+    noised_x_orig = random_flip(x_orig, flip_ratio)
+    noised_x = scalar.transform(noised_x_orig)
+    return noised_x
+
+  return add_noise
 
 
 mnist = tf.keras.datasets.mnist
@@ -230,7 +259,7 @@ dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
 
 print('start training')
 
-for epoch in range(10):
+for epoch in range(15):
   for step, (X, y_true) in enumerate(dataset.batch(32)):
     tf.print('step', step)
     with tf.GradientTape() as g:
@@ -240,3 +269,10 @@ for epoch in range(10):
     model.optimizer.apply_gradients(zip(grads, model.trainable_variables))
     tf.print('loss', loss)
   model.evaluate(x_train, y_train, verbose=2)
+
+noised_x_train = add_random_flip_noise(scalar, 0.1)(x_train)
+y_pred = model(noised_x_train)
+y_pred = tf.argmax(tf.nn.softmax(y_pred, axis=-1), axis=-1)
+y_true = tf.argmax(y_train, axis=-1)
+
+
