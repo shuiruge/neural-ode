@@ -27,6 +27,24 @@ tf.keras.backend.clear_session()
 # SOLVER = 'rk4'
 SOLVER = 'rkf56'
 DEBUG = False
+# DEBUG = True
+
+
+@tf.custom_gradient
+def inversed_boundary_reflection(x):
+  r"""The $G_{\bold{i}}^{-1}$ in the paper [1].
+
+  References:
+    1. Diffusions for Global Optimization, S. Geman and C. Hwang
+  """
+  i = tf.cast(x, 'int32')
+  delta = x - tf.cast(i, x.dtype)
+  y = tf.where(i % 2 == 0, x, 1 - x)
+
+  def grad_fn(dy):
+    return tf.where(i % 2 == 0, dy, -dy)
+
+  return y, grad_fn
 
 
 class HopfieldLayer(tf.keras.layers.Layer):
@@ -53,13 +71,13 @@ class HopfieldLayer(tf.keras.layers.Layer):
     def pvf(_, x):
       with tf.GradientTape() as g:
         g.watch(x)
-        e = energy(x)
-      grad = g.gradient(e, x, unconnected_gradients='zero')
-      # \sigma(x) := (1/2) (1 - cos(x))
-      return tf.sqrt(x * (1 - x)) * grad
+        bounded_x = inversed_boundary_reflection(x)
+        e = energy(bounded_x)
+      return -g.gradient(e, x, unconnected_gradients='zero')
 
     max_delta_t = 50.0
-    tolerance = 1e-2
+    tolerance = 0.1
+    # TODO: Why so sensitive to `tolerence` (0.11 <--> 0.1)?
 
     @tf.function
     def stop_condition(t0, x0, t, x):
@@ -68,13 +86,35 @@ class HopfieldLayer(tf.keras.layers.Layer):
         tf.print('energy:', energy(x)[:3])
       if tf.abs(t - t0) > max_delta_t:
         if DEBUG:
+          tf.print("""
+
+            ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+            +++++++++++++++++++++ reached max delta t...... ++++++++++++++++++++
+
+            ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+          """)
+        else:
           tf.print('reached max delta t......')
         return True
       max_abs_velocity = tf.reduce_mean(
         tf.reduce_max(tf.abs(pvf(t, x)), axis=-1))
+      if DEBUG:
+        tf.print('max_abs_velocity:', max_abs_velocity)
       if max_abs_velocity < tolerance:
         if DEBUG:
-          tf.print('----------------- relaxed!!! ----------------')
+          tf.print("""
+
+            --------------------------------------------------------------------
+
+            ----------------------------- relaxed!!! ---------------------------
+
+            --------------------------------------------------------------------
+
+          """)
+        else:
+          tf.print('relaxed!!!')
         return True
       return False
 
@@ -177,7 +217,6 @@ for epoch in range(15):
       loss = tf.debugging.assert_all_finite(loss, '')
     grads = g.gradient(loss, model.trainable_variables)
     model.optimizer.apply_gradients(zip(grads, model.trainable_variables))
-    if step % 10 == 0:
-      tf.print('step', step)
-      tf.print('loss', loss)
+    tf.print('step', step)
+    tf.print('loss', loss)
 model.evaluate(x_train, y_train, verbose=2)
