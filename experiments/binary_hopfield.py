@@ -26,13 +26,14 @@ tf.keras.backend.clear_session()
 
 # SOLVER = 'rk4'
 SOLVER = 'rkf56'
-DEBUG = False
-# DEBUG = True
+DEBUG = 1
 
 
 @tf.custom_gradient
-def inversed_boundary_reflection(x):
-  r"""The $G_{\bold{i}}^{-1}$ in the paper [1].
+def inverse_boundary_reflect(x):
+  r"""Inverse of $G$ function in the reference [1].
+
+  $$ G^{-1}: \mathbb{R}^n \mapsto [0, 1]^n $$
 
   References:
     1. Diffusions for Global Optimization, S. Geman and C. Hwang
@@ -47,17 +48,55 @@ def inversed_boundary_reflection(x):
   return y, grad_fn
 
 
+class StopCondition(tf.Module):  # TODO: add `min_delta_t`.
+
+  def __init__(self, energy, max_delta_t, rel_tol):
+    super().__init__()
+    self.energy = energy
+    self.max_delta_t = max_delta_t
+    self.rel_tol = rel_tol
+
+    self._previous_energy = tf.Variable(
+      0., shape=tf.TensorShape(None), validate_shape=False,
+      trainable=False)
+
+  @tf.function
+  def __call__(self, t0, x0, t, x):
+    shall_stop = False
+    current_energy = self.energy(x)
+    if tf.abs(t - t0) > self.max_delta_t:
+      shall_stop = True
+      if DEBUG > 0:
+        tf.print('reached max delta t:', self.max_delta_t)
+    elif t > t0:
+      delta_energy = current_energy - self._previous_energy
+      rel_delta = (tf.math.abs(delta_energy) /
+                   (tf.math.abs(self._previous_energy) + 1e-8))
+      shall_stop = tf.reduce_max(rel_delta) < self.rel_tol
+      if shall_stop and DEBUG > 0:
+        tf.print('relaxed at delta t:', t - t0)
+    else:
+      pass
+    if DEBUG > 1:
+      x_mean, x_var = tf.nn.moments(x, axes=[1])
+      if DEBUG > 2:
+        tf.print('mean:', x_mean)
+      tf.print('std:', tf.sqrt(x_var))
+    self._previous_energy.assign(current_energy)
+    return shall_stop
+
+
 class HopfieldLayer(tf.keras.layers.Layer):
 
-  def __init__(self, energy, dt, beta=1.0, eps=1e-2,
+  def __init__(self, energy, dt, stop_condition,
                name='HopfieldLayer', **kwargs):
     super().__init__(name=name, **kwargs)
 
     self.energy = energy
     self.dt = tf.convert_to_tensor(dt)
-    self.beta = tf.convert_to_tensor(beta)
-    self.eps = eps
-    self._config = {'energy': energy, 'dt': dt, 'beta': beta, 'eps': eps}
+    self.stop_condition = stop_condition
+    self._config = {'energy': energy, 'dt': dt,
+                    'stop_condition': stop_condition}
 
     if SOLVER == 'rk4':
       solver = RK4Solver(self.dt)
@@ -71,54 +110,10 @@ class HopfieldLayer(tf.keras.layers.Layer):
     def pvf(_, x):
       with tf.GradientTape() as g:
         g.watch(x)
-        bounded_x = inversed_boundary_reflection(x)
+        bounded_x = inverse_boundary_reflect(x)
         e = energy(bounded_x)
       return -g.gradient(e, x, unconnected_gradients='zero')
 
-    max_delta_t = 50.0
-    tolerance = 0.1
-    # TODO: Why so sensitive to `tolerence` (0.11 <--> 0.1)?
-
-    @tf.function
-    def stop_condition(t0, x0, t, x):
-      if DEBUG:
-        tf.print('pvf:', tf.abs(pvf(t, x))[0])
-        tf.print('energy:', energy(x)[:3])
-      if tf.abs(t - t0) > max_delta_t:
-        if DEBUG:
-          tf.print("""
-
-            ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-            +++++++++++++++++++++ reached max delta t...... ++++++++++++++++++++
-
-            ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-          """)
-        else:
-          tf.print('reached max delta t......')
-        return True
-      max_abs_velocity = tf.reduce_mean(
-        tf.reduce_max(tf.abs(pvf(t, x)), axis=-1))
-      if DEBUG:
-        tf.print('max_abs_velocity:', max_abs_velocity)
-      if max_abs_velocity < tolerance:
-        if DEBUG:
-          tf.print("""
-
-            --------------------------------------------------------------------
-
-            ----------------------------- relaxed!!! ---------------------------
-
-            --------------------------------------------------------------------
-
-          """)
-        else:
-          tf.print('relaxed!!!')
-        return True
-      return False
-
-    self.energy = energy
     self.pvf = pvf
     self._node_fn = get_dynamical_node_function(
       dynamical_solver, solver, pvf, stop_condition)
@@ -127,7 +122,8 @@ class HopfieldLayer(tf.keras.layers.Layer):
   def call(self, x0):
     t0 = tf.constant(0.)
     x1 = self._node_fn(t0, x0)
-    return x1
+    y = inverse_boundary_reflect(x1)
+    return y
 
   def get_config(self):
     config = super().get_config()
@@ -138,12 +134,14 @@ class HopfieldLayer(tf.keras.layers.Layer):
 
 class HopfieldModel(tf.keras.Model):
 
-  def __init__(self, units, dt, hidden_units=1024,
+  def __init__(self, units, dt, hidden_units, max_delta_t, rel_tol,
                **kwargs):
     super().__init__(**kwargs)
     self.units = units
     self.dt = dt
     self.hidden_units = hidden_units
+    self.max_delta_t = max_delta_t
+    self.rel_tol = rel_tol
     self._config = {'units': units, 'dt': dt, 'hidden_units': hidden_units}
 
     energy = tf.keras.Sequential([
@@ -154,7 +152,8 @@ class HopfieldModel(tf.keras.Model):
 
     self._down_sampling = tf.keras.layers.Dense(
       units, activation='sigmoid', name='DownSampling')
-    self._hopfield_layer = HopfieldLayer(energy, dt)
+    stop_condition = StopCondition(energy, max_delta_t, rel_tol)
+    self._hopfield_layer = HopfieldLayer(energy, dt, stop_condition)
     self._output_layer = tf.keras.layers.Dense(
       10, activation='softmax', name='Softmax')
 
@@ -181,42 +180,82 @@ def process_data(X, y):
   return X.astype('float32'), y.astype('float32')
 
 
+def random_flip(binary, flip_ratio):
+
+  def flip(binary):
+    return np.where(binary > 0.5,
+                    np.zeros_like(binary),
+                    np.ones_like(binary))
+
+  if_flip = np.random.random(size=binary.shape) < flip_ratio
+  return np.where(if_flip, flip(binary), binary)
+
+
+def add_random_flip_noise(scalar, flip_ratio):
+
+  def add_noise(x):
+    # get noised_x_train
+    x_orig = scalar.inverse_transform(x)
+    noised_x_orig = random_flip(x_orig, flip_ratio)
+    noised_x = scalar.transform(noised_x_orig)
+    return noised_x
+
+  return add_noise
+
+
 mnist = tf.keras.datasets.mnist
-(x_train, y_train), _ = mnist.load_data()
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
 x_train, y_train = process_data(x_train, y_train)
+x_test, y_test = process_data(x_test, y_test)
 
 scalar = StandardScaler()
 scalar.fit(x_train)
 x_train = scalar.transform(x_train)
+x_test = scalar.transform(x_test)
 
 # num_data = 1024
 # x_train = x_train[:num_data]
 # y_train = y_train[:num_data]
 
 model = HopfieldModel(
-  units=64, dt=1e-2, hidden_units=1024)
+  units=64, dt=1e-2, hidden_units=512, max_delta_t=100., rel_tol=5e-3)
 model.compile(
   loss=tf.losses.CategoricalCrossentropy(),
   optimizer=tfa.optimizers.Lookahead(tf.optimizers.Adam(1e-3)),
   # optimizer=tf.optimizers.Adamax(1e-3),
   metrics=['accuracy'],
 )
-print([(_.name, _.shape) for _ in model.trainable_variables])
 
 # use custom training loop for the convenience of doing experiments
-dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
+dataset = (tf.data.Dataset.from_tensor_slices((x_train, y_train))
+           .repeat(2)
+           .batch(128))
 
 print('start training')
 
 # TODO: where is the NaN?
-for epoch in range(15):
-  for step, (X, y_true) in enumerate(dataset.batch(32)):
-    with tf.GradientTape() as g:
-      y_pred = model(X)
-      loss = model.loss(y_true, y_pred)
-      loss = tf.debugging.assert_all_finite(loss, '')
-    grads = g.gradient(loss, model.trainable_variables)
-    model.optimizer.apply_gradients(zip(grads, model.trainable_variables))
-    tf.print('step', step)
-    tf.print('loss', loss)
-model.evaluate(x_train, y_train, verbose=2)
+for step, (X, y_true) in enumerate(dataset):
+  with tf.GradientTape() as g:
+    y_pred = model(X)
+    loss = model.loss(y_true, y_pred)
+    loss = tf.debugging.assert_all_finite(loss, '')
+  grads = g.gradient(loss, model.trainable_variables)
+  model.optimizer.apply_gradients(zip(grads, model.trainable_variables))
+  tf.print('step', step)
+  tf.print('loss', loss)
+
+noised_x_train = add_random_flip_noise(scalar, 0.01)(x_train)
+y0 = tf.argmax(model(noised_x_train[:128]), axis=-1)
+y1 = tf.argmax(y_train[:128], axis=-1)
+
+model2 = HopfieldModel(
+  units=64, dt=1e-2, hidden_units=512, max_delta_t=100., rel_tol=3e-3)
+model2.compile(
+  loss=tf.losses.CategoricalCrossentropy(),
+  optimizer=tfa.optimizers.Lookahead(tf.optimizers.Adam(1e-3)),
+  metrics=['accuracy'],
+)
+model2(X)
+model2.set_weights(model.get_weights())
+
+y10 = tf.argmax(model2(noised_x_train[:128]), axis=-1)
