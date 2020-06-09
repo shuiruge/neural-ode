@@ -114,20 +114,17 @@ class HopfieldLayer(tf.keras.layers.Layer):
     return x1
 
 
-class Pooling(tf.keras.layers.Layer):
+class MaxPool2D(tf.keras.layers.Layer):
 
   def __init__(self, strides, **kwargs):
     super().__init__(**kwargs)
-    self._max_pooling = tf.keras.layers.MaxPool2D(
+    self._pooling = tf.keras.layers.MaxPool2D(
       strides=(strides, strides))
 
   def call(self, x):
-    batch_size = x.get_shape().as_list()[0]
-    x_dim = x.get_shape().as_list()[1]
-    sqrt_dim = int(np.sqrt(x_dim))
-    x = tf.reshape(x, [batch_size, sqrt_dim, sqrt_dim, 1])
-    x = self._max_pooling(x)
-    x = tf.reshape(x, [batch_size, -1])
+    x = tf.expand_dims(x, axis=-1)
+    x = self._pooling(x)
+    x = tf.squeeze(x, axis=-1)
     return x
 
 
@@ -141,35 +138,39 @@ class HopfieldModel(tf.keras.Model):
     self.max_delta_t = max_delta_t
     self.rel_tol = rel_tol
 
-    energy = tf.keras.Sequential([
+    potential = tf.keras.Sequential([
         tf.keras.layers.Dense(hidden_units, activation='relu'),
-        tf.keras.layers.Dense(1, activation=None)],
-      name='Energy')
+        tf.keras.layers.Dense(1, activation=None),
+        tf.keras.layers.Lambda(lambda x: tf.squeeze(x, axis=-1))
+    ])
 
-    self._pooling = tf.keras.layers.MaxPool2D(strides=(2, 2))
+    def get_kinetic(mass):
+      return lambda x: 0.5 * mass * tf.reduce_mean(x * x, axis=-1)
+
+    kinetic = get_kinetic(mass=1)
+
+    def energy(x):
+      return kinetic(x) + potential(x)
+
+    self._pooling = MaxPool2D(strides=2)
     self._reshape = tf.keras.layers.Reshape([-1])
     self._layer_norm = tf.keras.layers.LayerNormalization()
     stop_condition = StopCondition(energy, max_delta_t, rel_tol)
     self._hopfield_layer = HopfieldLayer(energy, dt, stop_condition)
     self._layer_norm_1 = tf.keras.layers.LayerNormalization()
     # XXX: test!
-    self._hidden_layer = tf.keras.layers.Dense(128, activation='relu')
+    self._hidden_layer = tf.keras.layers.Dense(32, activation='relu')
     self._output_layer = tf.keras.layers.Dense(
       10, activation='softmax', name='Softmax')
 
+  @tf.function
   def call(self, x):
-    x = tf.expand_dims(x, axis=-1)
     x = self._pooling(x)
-    x = tf.squeeze(x, axis=-1)
     x = self._reshape(x)
     x = self._layer_norm(x)
-    x = tf.debugging.assert_all_finite(x, '')
     x = self._hopfield_layer(x)
-    x = tf.debugging.assert_all_finite(x, '')
     x = self._layer_norm_1(x)
-    x = tf.debugging.assert_all_finite(x, '')
     x = self._output_layer(x)
-    x = tf.debugging.assert_all_finite(x, '')
     return x
 
 
@@ -198,6 +199,28 @@ def add_random_flip_noise(flip_ratio):
   return add_noise
 
 
+def add_gaussian_noise(scale):
+
+  def add_noise(x):
+    y = x + scale * np.random.normal(size=x.shape)
+    return np.clip(y, 0, 1)
+
+  return add_noise
+
+
+def add_pixalwise_gaussian_noise(factor, scale):
+
+  def add_noise(x):
+    noise = scale * np.random.normal(size=x.shape)
+    noise = np.where(np.random.random(size=x.shape) < factor,
+                     noise,
+                     np.zeros_like(x))
+    y = x + noise
+    return np.clip(y, 0, 1)
+
+  return add_noise
+
+
 mnist = tf.keras.datasets.mnist
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 x_train, y_train = process_data(x_train, y_train)
@@ -217,12 +240,11 @@ model.compile(
 
 # use custom training loop for the convenience of doing experiments
 dataset = (tf.data.Dataset.from_tensor_slices((x_train, y_train))
-           .repeat(10)
+           .repeat(30)
            .batch(128))
 
 print('start training')
 
-# TODO: where is the NaN?
 for step, (X, y_true) in enumerate(dataset):
   with tf.GradientTape() as g:
     y_pred = model(X)
@@ -235,7 +257,7 @@ for step, (X, y_true) in enumerate(dataset):
 
 y0 = tf.argmax(y_train[:128], axis=-1)
 y1 = tf.argmax(model(x_train[:128]), axis=-1)
-noised_x_train = add_random_flip_noise(0.01)(x_train)
+noised_x_train = add_pixalwise_gaussian_noise(0.3, 0.3)(x_train)
 y2 = tf.argmax(model(noised_x_train[:128]), axis=-1)
 
 # TODO: Study the stability of *the output of the Hopfield layer*.
