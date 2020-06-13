@@ -95,14 +95,6 @@ def get_node_function(solver, fn):
   """
   forward = solver(fn)
 
-  if signature:
-    dtype = signature[0].dtype
-    time_spec_0 = tf.TensorSpec(shape=[], dtype=dtype)
-    time_spec_1 = tf.TensorSpec(shape=[], dtype=dtype)
-    input_signature = [time_spec_0, time_spec_1] + signature
-  else:
-    input_signature = None
-
   def node_fn(t0, t1, x0):
     """
     Args:

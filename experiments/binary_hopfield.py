@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow_addons as tfa
 from node.core import get_dynamical_node_function
 from node.solvers.runge_kutta import RK4Solver, RKF56Solver
 from node.solvers.dynamical_runge_kutta import (
@@ -114,11 +115,11 @@ class HopfieldLayer(tf.keras.layers.Layer):
     return x1
 
 
-class MaxPool2D(tf.keras.layers.Layer):
+class AveragePool2D(tf.keras.layers.Layer):
 
   def __init__(self, strides, **kwargs):
     super().__init__(**kwargs)
-    self._pooling = tf.keras.layers.MaxPool2D(
+    self._pooling = tf.keras.layers.AveragePooling2D(
       strides=(strides, strides))
 
   def call(self, x):
@@ -128,11 +129,10 @@ class MaxPool2D(tf.keras.layers.Layer):
     return x
 
 
-class HopfieldModel(tf.keras.Model):
+class HopfieldModel(tf.keras.Sequential):
 
   def __init__(self, dt, hidden_units, max_delta_t, rel_tol,
                **kwargs):
-    super().__init__(**kwargs)
     self.dt = dt
     self.hidden_units = hidden_units
     self.max_delta_t = max_delta_t
@@ -147,31 +147,34 @@ class HopfieldModel(tf.keras.Model):
     def get_kinetic(mass):
       return lambda x: 0.5 * mass * tf.reduce_mean(x * x, axis=-1)
 
-    kinetic = get_kinetic(mass=1)
+    kinetic = get_kinetic(mass=0)
 
     def energy(x):
       return kinetic(x) + potential(x)
 
-    self._pooling = MaxPool2D(strides=2)
-    self._reshape = tf.keras.layers.Reshape([-1])
-    self._layer_norm = tf.keras.layers.LayerNormalization()
     stop_condition = StopCondition(energy, max_delta_t, rel_tol)
-    self._hopfield_layer = HopfieldLayer(energy, dt, stop_condition)
-    self._layer_norm_1 = tf.keras.layers.LayerNormalization()
-    # XXX: test!
-    self._hidden_layer = tf.keras.layers.Dense(32, activation='relu')
-    self._output_layer = tf.keras.layers.Dense(
-      10, activation='softmax', name='Softmax')
 
-  @tf.function
-  def call(self, x):
-    x = self._pooling(x)
-    x = self._reshape(x)
-    x = self._layer_norm(x)
-    x = self._hopfield_layer(x)
-    x = self._layer_norm_1(x)
-    x = self._output_layer(x)
-    return x
+    layers = [
+      tf.keras.Input([28, 28]),
+      AveragePool2D(strides=2),
+      tf.keras.layers.Reshape([14 * 14]),
+      # tfa.layers.GroupNormalization(),
+      # tf.keras.layers.LayerNormalization(),
+      tf.keras.layers.BatchNormalization(),
+      HopfieldLayer(energy, dt, stop_condition),
+      # tf.keras.layers.Dense(32, activation='relu'),
+      tf.keras.layers.Dense(
+        10, activation='softmax', name='Softmax'),
+    ]
+    super().__init__(layers, **kwargs)
+
+    # `tf.keras.Model` will trace the variables within the layers'
+    # `trainable_variables` attributes. The variables initialized
+    # outside the layers will not be traced, e.g. those of the `potential`.
+    #
+    # Extra variables are appended into the property `trainable_variables`
+    # of `tf.keras.Model` via the `_trainable_weights` attribute.
+    self._trainable_weights += potential.trainable_variables
 
 
 def process_data(X, y):
@@ -221,6 +224,27 @@ def add_pixalwise_gaussian_noise(factor, scale):
   return add_noise
 
 
+def get_benchmark_model(dataset, hidden_units):
+  layers = [
+    tf.keras.Input([28, 28]),
+    AveragePool2D(strides=2),
+    tf.keras.layers.Reshape([14 * 14]),
+    tf.keras.layers.LayerNormalization(),
+  ]
+  layers += [
+    tf.keras.layers.Dense(_, activation='relu') for _ in hidden_units]
+  layers += [
+    tf.keras.layers.Dense(10, activation='softmax'),
+  ]
+  model = tf.keras.Sequential(layers)
+  model.compile(
+    loss=tf.losses.CategoricalCrossentropy(),
+    optimizer=tf.optimizers.Adam(1e-3),
+  )
+  model.fit(dataset)
+  return model
+
+
 mnist = tf.keras.datasets.mnist
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 x_train, y_train = process_data(x_train, y_train)
@@ -230,21 +254,38 @@ num_data = 1024
 x_train = x_train[:num_data]
 y_train = y_train[:num_data]
 
+dataset = (tf.data.Dataset.from_tensor_slices((x_train, y_train))
+           .repeat(30)
+           .batch(128))
+
+benchmark_model_1 = get_benchmark_model(
+  # dataset, [14 * 14, 512, 14 * 14, 32])
+  dataset, [32])
+y0 = tf.argmax(y_train[:128], axis=-1)
+noised_x_train = add_pixalwise_gaussian_noise(0.3, 0.3)(x_train)
+
+y01 = benchmark_model_1(x_train[:128])
+y02 = benchmark_model_1(noised_x_train[:128])
+dy0 = np.where(np.abs(y01) > np.expand_dims(
+                 np.mean(np.abs(y01), axis=-1), axis=-1),
+               np.abs(y02 - y01) / y01, 0)
+
+sub_benchmark_model_1 = tf.keras.Sequential(benchmark_model_1.layers[:-2])
+y31 = sub_benchmark_model_1(x_train[:128])
+y32 = sub_benchmark_model_1(noised_x_train[:128])
+dy3 = np.where(np.abs(y31) > np.expand_dims(
+                 np.mean(np.abs(y31), axis=-1), axis=-1),
+               np.abs(y32 - y31) / y31, 0)
+
 model = HopfieldModel(
   dt=1e-2, hidden_units=512, max_delta_t=100., rel_tol=1e-2)
 model.compile(
   loss=tf.losses.CategoricalCrossentropy(),
   optimizer=tf.optimizers.Adam(1e-3),
-  metrics=['accuracy'],
 )
-
-# use custom training loop for the convenience of doing experiments
-dataset = (tf.data.Dataset.from_tensor_slices((x_train, y_train))
-           .repeat(30)
-           .batch(128))
-
 print('start training')
 
+# use custom training loop for the convenience of doing experiments
 for step, (X, y_true) in enumerate(dataset):
   with tf.GradientTape() as g:
     y_pred = model(X)
@@ -255,9 +296,18 @@ for step, (X, y_true) in enumerate(dataset):
   tf.print('step', step)
   tf.print('loss', loss)
 
-y0 = tf.argmax(y_train[:128], axis=-1)
-y1 = tf.argmax(model(x_train[:128]), axis=-1)
-noised_x_train = add_pixalwise_gaussian_noise(0.3, 0.3)(x_train)
-y2 = tf.argmax(model(noised_x_train[:128]), axis=-1)
+y11 = model(x_train[:128])
+y12 = model(noised_x_train[:128])
+dy1 = np.where(np.abs(y11) > np.expand_dims(
+                 np.mean(np.abs(y11), axis=-1), axis=-1),
+               np.abs(y12 - y11) / y11, 0)
 
 # TODO: Study the stability of *the output of the Hopfield layer*.
+
+sub_model = tf.keras.Sequential(model.layers[:4])
+
+y21 = sub_model(x_train[:128])
+y22 = sub_model(noised_x_train[:128])
+dy2 = np.where(np.abs(y21) > np.expand_dims(
+                 np.mean(np.abs(y21), axis=-1), axis=-1),
+               np.abs(y22 - y21) / y21, 0)
