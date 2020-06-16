@@ -22,6 +22,7 @@ def check_lower_bound(lower_bound):
 
   def decorator(fn):
 
+    @tf.function
     def lower_bounded_fn(*args, **kwargs):
       y = fn(*args, **kwargs)
       _check_lower_bound(y)
@@ -56,6 +57,7 @@ def rescale(factor):
   assert factor > 0.
   factor = tf.convert_to_tensor(factor)
 
+  @tf.function
   @nest_map
   def rescale_fn(x):
     return factor * x
@@ -90,6 +92,7 @@ def hopfield(energy, linear_transform=identity):
   Returns: PhaseVectorField
   """
 
+  @tf.function
   def static_field(_, x):
     with tf.GradientTape() as g:
       g.watch(x)
@@ -105,6 +108,7 @@ def get_stop_condition(pvf, max_delta_t, tolerance):
   max_delta_t = tf.convert_to_tensor(float(max_delta_t))
   tolerance = tf.convert_to_tensor(float(tolerance))
 
+  @tf.function
   def stop_condition(t0, x0, t, x):
     if tf.abs(t - t0) > max_delta_t:
       return True

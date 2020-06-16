@@ -38,6 +38,7 @@ class DynamicalRungeKuttaSolver(DynamicalODESolver):
     def dx(*ks):
       return sum(ci * ki for ci, ki in zip(self.c, ks))
 
+    @tf.function
     def forward(t0, x0, reverse=False):
       t = t0
       x = x0
@@ -107,6 +108,7 @@ class DynamicalRungeKuttaFehlbergSolver(DynamicalODESolver):
 
       return norm(_rs(*ks))
 
+    @tf.function
     def forward(t0, x0, reverse=False):
       s = tf.constant(-1.) if reverse else tf.constant(1.)
       t = t0
