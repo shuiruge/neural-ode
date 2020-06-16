@@ -1,3 +1,26 @@
+r"""
+
+Description
+-----------
+
+This script tries to reproduce the arguments in ref [1].
+
+It is find that the argument in ref [1], i.e. TisODE is more robust, is false
+in the case of deep feed forward network. In fact, the accuracy of TisODE
+decreases much faster than the benchmark model when adding the same Gaussian
+noise.
+
+The regularization trick in ref [1] is suspicous for ensuring robustness,
+since the fixed point is not ensured to be stable. An unstable fixed point
+can also provide a small enough regularization term.
+
+References
+----------
+
+1. arXiv: 1910.05513
+
+"""
+
 import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
@@ -20,6 +43,27 @@ DEBUG = 1
 
 
 class NodeLayer(tf.keras.layers.Layer):
+  r"""Implements the TisODE in ref [1].
+
+  References:
+    1. arXiv: 1910.05513
+
+  Args:
+    t0: float
+      Being `0` in ref [1].
+    t1: float
+      The `2T` in ref [1].
+    dt: float
+      The :math:`\Delta t` parameter in the Runge-Kutta solver.
+    units: int
+      The representing dimension.
+    hidden_units: int
+    regular_factor: float
+    n: int
+      To compute the integral :math:`\int_{T}^{2T} dt \| f(x(t)) \|`, we
+      seperate `x(t)` into `n` pieces, and then compute the Monte-Carlo
+      integral instead.
+  """
 
   def __init__(self, t0, t1, dt, units, hidden_units, regular_factor, n=5,
                name='NodeLayer', **kwargs):
@@ -44,8 +88,7 @@ class NodeLayer(tf.keras.layers.Layer):
       tf.keras.layers.Dense(hidden_units, activation='relu'),
       tf.keras.layers.Dense(units)])
 
-    self._node_fn = tf.function(
-      get_node_function(self._solver, lambda t, x: self._fn(x)))
+    self._node_fn = get_node_function(self._solver, lambda t, x: self._fn(x))
 
   def call(self, x0):
     t0 = self.t0
@@ -160,6 +203,7 @@ x_train, y_train = process_data(x_train, y_train)
 x_test, y_test = process_data(x_test, y_test)
 
 dataset = (tf.data.Dataset.from_tensor_slices((x_train, y_train))
+           .shuffle(10000)
            .batch(128))
 
 
@@ -175,39 +219,13 @@ noised_x_train = add_pixalwise_gaussian_noise(1, 0.3)(x_train)
 y_pred_benchmark = benchmark_model.predict(noised_x_train)
 y_pred = model.predict(noised_x_train)
 
-def get_acc(y_true, y_pred):
+def get_accuracy(y_true, y_pred):
   true_class = tf.argmax(y_true, axis=-1)
   pred_class = tf.argmax(y_pred, axis=-1)
   is_correct = tf.where(true_class == pred_class, 1., 0.)
   return tf.reduce_mean(is_correct)
 
-print(get_acc(y_train, y_pred_benchmark))
-print(get_acc(y_train, y_pred))
-
-node_fn = model.layers[3]._node_fn
-fn = model.layers[3]._fn
-X = x_train[:32]
-
-def get_pp(x):
-  for layer in model.layers[:4]:
-    x = layer(x)
-  return x
-
-def get_pvf(x):
-  return model.layers[3]._fn(x)
-
-def get_node_input(x):
-  for layer in model.layers[:3]:
-    x = layer(x)
-  return x
-
-x0 =  get_node_input(X)
-xt = node_fn(tf.constant(0.), tf.constant(t), x0)
-x1 = node_fn(tf.constant(0.), tf.constant(1.), x0)
-x2 = node_fn(tf.constant(0.), tf.constant(2.), x0)
-x10 = node_fn(tf.constant(0.), tf.constant(10.), x0)
-pvf0 = get_pvf(x0)
-pvft = get_pvf(xt)
-pvf1 = get_pvf(x1)
-pvf2 = get_pvf(x2)
-pvf10 = get_pvf(x10)
+print('Noised accuracy for benchmark model:',
+      get_accuracy(y_train, y_pred_benchmark))
+print('Noised accuracy for TisODE model:',
+      get_accuracy(y_train, y_pred))
