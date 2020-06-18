@@ -5,10 +5,24 @@ Description
 
 This script tries to reproduce the arguments in ref [1].
 
-It is find that the argument in ref [1], i.e. TisODE is more robust, is false
-in the case of deep feed forward network. In fact, the accuracy of TisODE
-decreases much faster than the benchmark model when adding the same Gaussian
-noise.
+Experiment Results
+------------------
+
+It is find that the argument in ref [1], i.e. TisODE is more robust, is in
+dependent in the case of deep feed forward network. In fact, the accuracy of
+TisODE decreases much faster than the benchmark model when adding the same
+Gaussian noise.
+
+Adding `GroupNormalization` (or `LayerNormalization`) layer will increases
+the robustness, making TisODE compatible with the vanilla, but not significantly
+surpassed. Even, evaluating the ODE for a longer period will decrease the
+accuracy, indicating that the fixed point is not fixed.
+
+Chaning ODESolver from RK4 to RKF56 improves the performance, but also gains
+more temporal occupation. The qualitative conclusion is invariant.
+
+Analysis
+--------
 
 The regularization trick in ref [1] is suspicous for ensuring robustness,
 since the fixed point is not ensured to be stable. An unstable fixed point
@@ -39,7 +53,6 @@ tf.keras.backend.clear_session()
 
 SOLVER = 'rk4'
 # SOLVER = 'rkf56'
-DEBUG = 1
 
 
 class NodeLayer(tf.keras.layers.Layer):
@@ -85,7 +98,9 @@ class NodeLayer(tf.keras.layers.Layer):
 
     self._fn = tf.keras.Sequential([
       tf.keras.Input([units]),
-      tf.keras.layers.Dense(hidden_units, activation='relu'),
+      tf.keras.layers.Dense(hidden_units),
+      tf.keras.layers.LayerNormalization(),
+      tf.keras.layers.Lambda(tf.keras.activations.relu),
       tf.keras.layers.Dense(units)])
 
     self._node_fn = get_node_function(self._solver, lambda t, x: self._fn(x))
@@ -162,10 +177,20 @@ def add_pixalwise_gaussian_noise(factor, scale):
 def get_benchmark_model(dataset, units, hidden_units):
   model = tf.keras.Sequential([
     tf.keras.layers.Reshape([28 * 28]),
-    tfa.layers.GroupNormalization(name='InputNormalization'),
+    tf.keras.layers.LayerNormalization(name='InputNormalization'),
+
+    # Feature extractor
     tf.keras.layers.Dense(units, name='FeatureExtractor'),
-    tf.keras.layers.Dense(hidden_units, activation='relu'),
+    tf.keras.layers.LayerNormalization(name='FeatureNormalization'),
+
+    # Representation mapping
+    # Minic the structure in the TisODE model
+    tf.keras.layers.Dense(hidden_units),
+    tf.keras.layers.LayerNormalization(),
+    tf.keras.layers.Lambda(tf.keras.activations.relu),
     tf.keras.layers.Dense(units),
+
+    # Output classifier
     tf.keras.layers.Dense(10, activation='softmax',
                           name='OutputClassifier'),
   ])
@@ -181,9 +206,16 @@ def get_benchmark_model(dataset, units, hidden_units):
 def get_model(dataset, units, hidden_units, t, regular_factor):
   model = tf.keras.Sequential([
     tf.keras.layers.Reshape([28 * 28]),
-    tfa.layers.GroupNormalization(name='InputNormalization'),
+    tf.keras.layers.LayerNormalization(name='InputNormalization'),
+
+    # Feature extractor
     tf.keras.layers.Dense(units, name='FeatureExtractor'),
+    tf.keras.layers.LayerNormalization(name='FeatureNormalization'),
+
+    # Representation mapping
     NodeLayer(0., t, 0.1, units, hidden_units, regular_factor),
+
+    # Output classifier
     tf.keras.layers.Dense(10, activation='softmax',
                           name='OutputClassifier'),
   ])
@@ -215,7 +247,7 @@ t = 2.
 regular_factor = 1.
 model = get_model(dataset, units, hidden_units, t, regular_factor)
 
-noised_x_train = add_pixalwise_gaussian_noise(1, 0.3)(x_train)
+noised_x_train = add_pixalwise_gaussian_noise(0.5, 0.5)(x_train)
 y_pred_benchmark = benchmark_model.predict(noised_x_train)
 y_pred = model.predict(noised_x_train)
 
@@ -229,3 +261,15 @@ print('Noised accuracy for benchmark model:',
       get_accuracy(y_train, y_pred_benchmark))
 print('Noised accuracy for TisODE model:',
       get_accuracy(y_train, y_pred))
+
+def fork_model(dataset, units, hidden_units, t, regular_factor, model):
+  new_model = get_model(None, units, hidden_units, t, regular_factor)
+  new_model.build((None, 28, 28))
+  new_model.set_weights(model.get_weights())
+  return new_model
+
+model_2 = fork_model(dataset, units, hidden_units, 4., regular_factor, model)
+y_pred_2 = model_2.predict(noised_x_train)
+print('Noised accuracy for longer TisODE model:',
+      get_accuracy(y_train, y_pred_2))
+
