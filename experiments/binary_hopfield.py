@@ -147,7 +147,7 @@ class HopfieldModel(tf.keras.Sequential):
     def get_kinetic(mass):
       return lambda x: 0.5 * mass * tf.reduce_mean(x * x, axis=-1)
 
-    kinetic = get_kinetic(mass=0)
+    kinetic = get_kinetic(mass=1)
 
     def energy(x):
       return kinetic(x) + potential(x)
@@ -158,11 +158,10 @@ class HopfieldModel(tf.keras.Sequential):
       tf.keras.Input([28, 28]),
       AveragePool2D(strides=2),
       tf.keras.layers.Reshape([14 * 14]),
-      # tfa.layers.GroupNormalization(),
-      # tf.keras.layers.LayerNormalization(),
-      tf.keras.layers.BatchNormalization(),
+      tf.keras.layers.LayerNormalization(),
+      tf.keras.layers.Dropout(0.3),
       HopfieldLayer(energy, dt, stop_condition),
-      # tf.keras.layers.Dense(32, activation='relu'),
+      tf.keras.layers.Dense(32, activation='relu'),
       tf.keras.layers.Dense(
         10, activation='softmax', name='Softmax'),
     ]
@@ -245,6 +244,11 @@ def get_benchmark_model(dataset, hidden_units):
   return model
 
 
+def compare(x1, x2):
+  threshold = np.median(np.abs(x1), axis=-1, keepdims=True)
+  return np.where(np.abs(x1) > threshold, (x1 - x2) / x1, 0)
+
+
 mnist = tf.keras.datasets.mnist
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 x_train, y_train = process_data(x_train, y_train)
@@ -258,37 +262,34 @@ dataset = (tf.data.Dataset.from_tensor_slices((x_train, y_train))
            .repeat(30)
            .batch(128))
 
-benchmark_model_1 = get_benchmark_model(
+benchmark_model = get_benchmark_model(
   # dataset, [14 * 14, 512, 14 * 14, 32])
   dataset, [32])
 y0 = tf.argmax(y_train[:128], axis=-1)
-noised_x_train = add_pixalwise_gaussian_noise(0.3, 0.3)(x_train)
+noised_x_train = add_pixalwise_gaussian_noise(1.0, 0.3)(x_train)
 
-y01 = benchmark_model_1(x_train[:128])
-y02 = benchmark_model_1(noised_x_train[:128])
-dy0 = np.where(np.abs(y01) > np.expand_dims(
-                 np.mean(np.abs(y01), axis=-1), axis=-1),
-               np.abs(y02 - y01) / y01, 0)
+y01 = benchmark_model(x_train[:128])
+y02 = benchmark_model(noised_x_train[:128])
+dy_benchmark = compare(y01, y02)
 
-sub_benchmark_model_1 = tf.keras.Sequential(benchmark_model_1.layers[:-2])
-y31 = sub_benchmark_model_1(x_train[:128])
-y32 = sub_benchmark_model_1(noised_x_train[:128])
-dy3 = np.where(np.abs(y31) > np.expand_dims(
-                 np.mean(np.abs(y31), axis=-1), axis=-1),
-               np.abs(y32 - y31) / y31, 0)
+sub_benchmark_model = tf.keras.Sequential(benchmark_model.layers[:-2])
+y11 = sub_benchmark_model(x_train[:128])
+y12 = sub_benchmark_model(noised_x_train[:128])
+dy_sub_benchmark = compare(y11, y12)
 
 model = HopfieldModel(
-  dt=1e-2, hidden_units=512, max_delta_t=100., rel_tol=1e-2)
+  dt=1e-0, hidden_units=512, max_delta_t=100., rel_tol=1e-2)
 model.compile(
   loss=tf.losses.CategoricalCrossentropy(),
   optimizer=tf.optimizers.Adam(1e-3),
 )
 print('start training')
+# model.fit(dataset, verbose=2)
 
 # use custom training loop for the convenience of doing experiments
 for step, (X, y_true) in enumerate(dataset):
   with tf.GradientTape() as g:
-    y_pred = model(X)
+    y_pred = model(X, training=True)
     loss = model.loss(y_true, y_pred)
     loss = tf.debugging.assert_all_finite(loss, '')
   grads = g.gradient(loss, model.trainable_variables)
@@ -296,18 +297,12 @@ for step, (X, y_true) in enumerate(dataset):
   tf.print('step', step)
   tf.print('loss', loss)
 
-y11 = model(x_train[:128])
-y12 = model(noised_x_train[:128])
-dy1 = np.where(np.abs(y11) > np.expand_dims(
-                 np.mean(np.abs(y11), axis=-1), axis=-1),
-               np.abs(y12 - y11) / y11, 0)
+y21 = model(x_train[:128])
+y22 = model(noised_x_train[:128])
+dy_model = compare(y21, y22)
 
-# TODO: Study the stability of *the output of the Hopfield layer*.
+sub_model = tf.keras.Sequential(model.layers[:5])
 
-sub_model = tf.keras.Sequential(model.layers[:4])
-
-y21 = sub_model(x_train[:128])
-y22 = sub_model(noised_x_train[:128])
-dy2 = np.where(np.abs(y21) > np.expand_dims(
-                 np.mean(np.abs(y21), axis=-1), axis=-1),
-               np.abs(y22 - y21) / y21, 0)
+y31 = sub_model(x_train[:128])
+y32 = sub_model(noised_x_train[:128])
+dy_sub_model = compare(y31, y32)
