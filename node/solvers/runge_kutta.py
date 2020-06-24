@@ -153,13 +153,26 @@ class RungeKuttaSolver(ODESolver):
     return forward
 
 
+def l2_norm(x):
+  """L_2 norm."""
+  return tf.sqrt(tf.reduce_sum(tf.square(x)))
+
+
+def rms_norm(x):
+  """RMS norm."""
+  return tf.sqrt(tf.reduce_mean(tf.square(x)))
+
+
+def l_inf_norm(x):
+  """L_{\infinity} norm."""
+  return tf.reduce_max(tf.abs(x))
+
+
 def norm(x):
-
-  def l2(x):
-    return tf.sqrt(tf.reduce_sum(tf.square(x)))
-
+  # TODO: reduce_max? without considering the batch-dimension?
   flat = tf.nest.flatten(x)
-  return tf.reduce_max([l2(_) for _ in flat])
+  # use L-infinity norm since it's dimension independent
+  return tf.reduce_max([l_inf_norm(_) for _ in flat])
 
 
 class RungeKuttaFehlbergSolver(ODESolver):
