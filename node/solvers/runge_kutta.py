@@ -169,7 +169,8 @@ def l_inf_norm(x):
 
 
 def norm(x):
-  # TODO: reduce_max? without considering the batch-dimension?
+  # XXX: Reduce_max? Without considering the batch-dimension?
+  # Because the dt is universal for all samples.
   flat = tf.nest.flatten(x)
   # use L-infinity norm since it's dimension independent
   return tf.reduce_max([l_inf_norm(_) for _ in flat])

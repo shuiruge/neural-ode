@@ -42,7 +42,7 @@
     given,
 
     <\equation*>
-      <frac|\<partial\>L|\<partial\>x<around*|(|t|)>>=<frac|\<partial\>L|\<partial\>x<rsub|1>>-<big|int><rsub|t><rsup|t<rsub|1>><frac|\<partial\>L|\<partial\>x<rsup|\<beta\>><around*|(|\<tau\>|)>><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>x<rsup|\<alpha\>><around*|(|\<tau\>|)>><around*|(|\<tau\>,x<around*|(|\<tau\>|)>;\<theta\>|)>\<mathd\>\<tau\>,
+      <frac|\<partial\>L|\<partial\>x<rsup|\<alpha\>><around*|(|t|)>>=<frac|\<partial\>L|\<partial\>x<rsup|\<alpha\>><rsub|1>>-<big|int><rsub|t><rsup|t<rsub|1>><frac|\<partial\>L|\<partial\>x<rsup|\<beta\>><around*|(|\<tau\>|)>><frac|\<partial\>f<rsup|\<beta\>>|\<partial\>x<rsup|\<alpha\>>><around*|(|\<tau\>,x<around*|(|\<tau\>|)>;\<theta\>|)>\<mathd\>\<tau\>,
     </equation*>
 
     and
@@ -173,9 +173,10 @@
 
     then <math|d<with|math-font|cal|E>/dt\<leqslant\>0> along
     <math|x<around*|(|t|)>>. Further, if <math|<with|math-font|cal|E>> is
-    lower bounded, then <math|\<exists\>t<rsub|\<star\>>\<less\>+\<infty\>>,
-    s.t. <math|\<mathd\>x<rsup|\<alpha\>>/\<mathd\>t=0> at
-    <math|t<rsub|\<star\>>>.
+    lower bounded, then for <math|\<forall\>\<epsilon\>\<gtr\>0>
+    <math|\<exists\>t<rsub|\<star\>>\<less\>+\<infty\>>, s.t.
+    <math|<around*|\||\<mathd\>x<rsup|\<alpha\>>/\<mathd\>t|\|>\<less\>\<epsilon\>>
+    at <math|t<rsub|\<star\>>>.
   </theorem>
 
   <\proof>
@@ -233,13 +234,13 @@
     is a bounded function in <math|C<rsup|1><around*|(|M,\<bbb-R\>|)>>.
   </theorem>
 
-  One option of <math|G> is <math|tanh>-function. However, the
-  <math|tanh<around*|(|x|)>> will be saterated as
+  One option of <math|<with|math-font|cal|B>> is <math|tanh>-function.
+  However, the <math|tanh<around*|(|x|)>> will be saterated as
   <math|x\<rightarrow\>\<pm\>\<infty\>>. A better option is <slanted|boundary
   reflection>. Define boundary reflection map
 
   <\align>
-    <tformat|<table|<row|<cell|f<rsub|BR>>|<cell|:\<bbb-R\><rsup|d>\<rightarrow\><around*|[|0,1|]><rsup|d>>>|<row|<cell|f<rsub|BR><around*|(|x|)>>|<cell|=<choice|<tformat|<table|<row|<cell|x,x\<in\><around*|[|0,1|]>>>|<row|<cell|-x,x\<in\><around*|[|-1,0|]>>>|<row|<cell|f<rsub|BR><around*|(|x-2|)>,x\<gtr\>1>>|<row|<cell|f<rsub|BR><around*|(|x+2|)>,x\<less\>-1>>>>>.>>>>
+    <tformat|<table|<row|<cell|f<rsub|BR>>|<cell|:\<bbb-R\>\<rightarrow\><around*|[|0,1|]>>>|<row|<cell|f<rsub|BR><around*|(|x|)>>|<cell|=<choice|<tformat|<table|<row|<cell|x,x\<in\><around*|[|0,1|]>>>|<row|<cell|-x,x\<in\><around*|[|-1,0|]>>>|<row|<cell|f<rsub|BR><around*|(|x-2|)>,x\<gtr\>1>>|<row|<cell|f<rsub|BR><around*|(|x+2|)>,x\<less\>-1>>>>>.>>>>
   </align>
 
   This function has constant gradient <math|\<pm\>1>, thus no saturation. It
@@ -268,15 +269,15 @@
       Method> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-1><vspace|0.5fn>
 
-      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|2<space|2spc>Continuum
-      of Hopfield> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|2<space|2spc>Continuous-time
+      Hopfield Network> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-2><vspace|0.5fn>
 
-      <with|par-left|<quote|1tab>|2.1<space|2spc>Hopfield Network
-      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <with|par-left|<quote|1tab>|2.1<space|2spc>Discrete-time Hopfield
+      Network <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-3>>
 
-      <with|par-left|<quote|1tab>|2.2<space|2spc>Continuum
+      <with|par-left|<quote|1tab>|2.2<space|2spc>Continuum of Time
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-4>>
 

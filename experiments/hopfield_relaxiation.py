@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
+from sklearn import preprocessing
 from node.core import get_dynamical_node_function
 from node.solvers.runge_kutta import RK4Solver, RKF56Solver
 from node.solvers.dynamical_runge_kutta import (
@@ -73,7 +74,7 @@ class StopCondition(tf.Module):
         tf.print('energy relative difference:', rel_delta)
       # max_rel_delta = tf.reduce_max(rel_delta)
       mean, var = tf.nn.moments(rel_delta, axes=[0])
-      max_rel_delta = mean + 1 * tf.sqrt(var)
+      max_rel_delta = mean + 2 * tf.sqrt(var)  # ~ 95%
       if DEBUG == 2:
         tf.print('top energy relative difference:',
                  tf.math.top_k(rel_delta, k=5)[0],
@@ -202,7 +203,7 @@ def get_benchmark_model(dataset, d_model, hidden_units):
   model = tf.keras.Sequential(layers)
   model.compile(
     loss=tf.losses.CategoricalCrossentropy(),
-    optimizer=tf.optimizers.Adam(1e-3),
+    optimizer=tfa.optimizers.Lookahead(tf.optimizers.Adam(1e-3)),
   )
   model.fit(dataset)
   return model
@@ -224,15 +225,14 @@ def add_pixalwise_gaussian_noise(factor, scale):
     noise = np.where(np.random.random(size=x.shape) < factor,
                      noise,
                      np.zeros_like(x))
-    y = x + noise
-    return np.clip(y, 0, 1)
+    return x + noise
 
   return add_noise
 
 
 def compare(x1, x2):
-  threshold = np.median(np.abs(x1), axis=-1, keepdims=True)
-  return np.where(np.abs(x1) > threshold, (x1 - x2) / (x1 + x2) * 2, 0)
+  threshold = np.max(np.abs(x1)) / 10
+  return np.where(np.abs(x1) > threshold, (x1 - x2) / x1, 0)
 
 
 mnist = tf.keras.datasets.mnist
@@ -244,18 +244,21 @@ x_train, y_train = process_data(x_train, y_train)
 # x_train = x_train[:num_data]
 # y_train = y_train[:num_data]
 
+scalar = preprocessing.StandardScaler()
+x_train = scalar.fit_transform(x_train)
+
 # use custom training loop for the convenience of doing experiments
 dataset = (tf.data.Dataset.from_tensor_slices((x_train, y_train))
            .shuffle(1000)
            .repeat(3)
-           .batch(64))
+           .batch(32))
 
 model = HopfieldModel(
-  dt=1e-0, d_model=32, hidden_units=128, max_delta_t=100., rel_tol=1e-2,
+  dt=1e-0, d_model=32, hidden_units=128, max_delta_t=50., rel_tol=1e-2,
   dropout_rate=0.3)
 model.compile(
   loss=tf.losses.CategoricalCrossentropy(),
-  optimizer=tf.optimizers.Adam(1e-3),
+  optimizer=tfa.optimizers.Lookahead(tf.optimizers.Adam(1e-3)),
 )
 
 print('start training')
@@ -277,7 +280,7 @@ for step, (X, y_true) in enumerate(dataset):
 
 benchmark_model = get_benchmark_model(dataset, d_model=32, hidden_units=[32])
 
-noised_x_train = add_pixalwise_gaussian_noise(0.5, 0.5)(x_train)
+noised_x_train = add_pixalwise_gaussian_noise(0.5, 0.3)(x_train)
 
 y01 = benchmark_model(x_train[:128])
 y02 = benchmark_model(noised_x_train[:128])
@@ -301,4 +304,4 @@ dy_sub_model = compare(y31, y32)
 sub_model_raw = tf.keras.Sequential(model.layers[:-3])
 y41 = sub_model_raw(x_train[:128])
 y42 = sub_model_raw(noised_x_train[:128])
-dy_sub_model_raw = compare(y42, y42)
+dy_sub_model_raw = compare(y41, y42)

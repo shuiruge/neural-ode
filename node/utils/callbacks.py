@@ -1,6 +1,32 @@
 import tensorflow as tf
 
 
+class BestWeightsLogger(tf.keras.callbacks.Callback):
+
+  def __init__(self, monitor, is_better_than=lambda x, y: x < y):
+    self.monitor = monitor
+    self.is_better_than = is_better_than
+
+    self.best_weights = None
+    self._best_monitor_value = None
+
+  def on_train_batch_end(self, batch, logs=None):
+    print('---', logs)
+    current_monitor_value = logs.get(self.monitor)
+    if current_monitor_value is None:
+      return
+
+    if current_monitor_value > 1e+16:
+      tf.print('NaN is found in', self.monitor, 'Stop training!')
+      self.model.stop_training = True
+
+    if (self._best_monitor_value is None or
+        self.is_better_than(current_monitor_value,
+                            self._best_monitor_value)):
+      self._best_monitor_value == current_monitor_value
+      self.best_weights = [w.numpy() for w in self.model.get_weights()]
+
+
 class InspectResult:
 
   def __init__(self, batch, loss, activations, gradients, weights,
