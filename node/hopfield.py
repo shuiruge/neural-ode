@@ -1,120 +1,166 @@
-"""Implements the materials in the "Continuum of Hopfield" section of the
-documentation."""
+r"""
+Implement the Hopfield network. Try to learn the Hebb rule (or better) using
+modern SGD methods.
+
+References
+----------
+1. Information Theory, Inference, and Learning Algorithms, chapter 42,
+   Algorithm 42.9.
+"""
 
 import tensorflow as tf
-from node.utils.nest import nest_map
+from node.core import get_node_function, get_dynamical_node_function
+from node.solvers.runge_kutta import RKF56Solver
+from node.solvers.dynamical_runge_kutta import DynamicalRKF56Solver
 
 
-def check_lower_bound(lower_bound):
+@tf.function
+def kernel_constraint(kernel):
+  """Symmetric kernel with vanishing diagonal.
+
+  Parameters
+  ----------
+  kernel : tensor
+    Shape (N, N) for a positive integer N.
+
+  Returns
+  -------
+  tensor
+    The shape and dtype as the input.
   """
-  Args:
-    lower_bound: float
+  w = (kernel + tf.transpose(kernel)) / 2
+  w = tf.linalg.set_diag(w, tf.zeros(kernel.shape[0:-1]))
+  return w
 
-  Returns:
-    Decorator that checks the lower bound of the outputs of the decorated
-    function.
+
+class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
+  r"""Implements the algorithm 42.9 of ref [1].
+
+  References
+  ----------
+  1. Information Theory, Inference, and Learning Algorithms, chapter 42.
+
+  Parameters
+  ----------
+  units : int
+  activation : str or tensorflow activation, optional
+  relax_tol : float, optional
+    Tolerance for relaxition.
   """
-  lower_bound = tf.convert_to_tensor(lower_bound)
 
-  @nest_map
-  def _check_lower_bound(y):
-    tf.debugging.assert_greater_equal(y, lower_bound)
+  def __init__(self, units,
+               activation='tanh',
+               relax_tol=1e-2,
+               name='DiscreteTimeHopfieldLayer',
+               **kwargs):
+    super().__init__(name=name, **kwargs)
+    self.relax_tol = tf.convert_to_tensor(relax_tol)
 
-  def decorator(fn):
+    self._dense = tf.keras.layers.Dense(
+      units, activation, kernel_constraint=kernel_constraint)
 
-    @tf.function
-    def lower_bounded_fn(*args, **kwargs):
-      y = fn(*args, **kwargs)
-      _check_lower_bound(y)
-      return y
+  def call(self, x, training=None):
+    if training:
+      y = self._dense(x)
+    else:
+      new_x = self._dense(x)
+      while tf.reduce_max(tf.abs(new_x - x)) > self.relax_tol:
+        x = new_x
+        new_x = self._dense(x)
+      y = new_x
+    return y
 
-    return lower_bounded_fn
 
-  return decorator
+class StopCondition:
+  """Stopping condition for dynamical ODE solver.
 
+  Attributes
+  ----------
+  relax_time : scalar
+    The time when relax.
 
-@nest_map
-def identity(x):
-  """The identity linear transform.
-
-  Args:
-    x: PhasePoint
-
-  Returns: PhasePoint
+  Parameters
+  ----------
+  pvf : phase_vector_field
+  max_time : float
+  relax_tol : float
+    Tolerance for relaxition.
   """
-  return x
 
+  def __init__(self, pvf, max_time, relax_tol):
+    self.pvf = pvf
+    self.max_time = tf.convert_to_tensor(max_time)
+    self.relax_tol = tf.convert_to_tensor(relax_tol)
 
-def rescale(factor):
-  """
-  The `factor` shall be positive, for being postive defined.
-
-  Args:
-    factor: float
-
-  Returns: Callable[[PhasePoint], PhasePoint]
-  """
-  assert factor > 0.
-  factor = tf.convert_to_tensor(factor)
+    self.relax_time = tf.Variable(0., trainable=False)
 
   @tf.function
-  @nest_map
-  def rescale_fn(x):
-    return factor * x
-
-  return rescale_fn
-
-
-def hopfield(energy, linear_transform=identity):
-  r"""Returns a static phase vector field defined by
-
-  ```
-  \begin{equation}
-    \frac{dx^a}{dt} (t) = - U^{a b} \
-      \frac{\partial \mathcal{E}}{\partial x^b} \left( x(t) \right),
-  \end{equation}
-
-  where $U$ is a positive defined linear transformation, and energy
-  $\mathcal{E}$ a lower bounded scalar function.
-  ```
-
-  Args:
-    energy: Callable[[PhasePoint], tf.Tensor]
-      The lower bounded scalar (per sample) function `\mathcal{E}`.
-
-      Per sample means that it produces scalar for each sample in a batch of
-      inputs. Say, if the input shape is `[batch_size, model_dim_1, ...]`, then
-      the output shape will be `[batch_size]`.
-
-    linear_transform: Callable[[PhasePoint], PhasePoint]
-      Positive defined linear transformation. The $U$ transform.
-
-  Returns: PhaseVectorField
-  """
-
-  @tf.function
-  def static_field(_, x):
-    with tf.GradientTape() as g:
-      g.watch(x)
-      e = energy(x)
-    energy_gradient = g.gradient(e, x, unconnected_gradients='zero')
-    return -linear_transform(energy_gradient)
-
-  return static_field
-
-
-
-def get_stop_condition(pvf, max_delta_t, tolerance):
-  max_delta_t = tf.convert_to_tensor(float(max_delta_t))
-  tolerance = tf.convert_to_tensor(float(tolerance))
-
-  @tf.function
-  def stop_condition(t0, x0, t, x):
-    if tf.abs(t - t0) > max_delta_t:
+  def __call__(self, t0, x0, t1, x1):
+    if t1 - t0 > self.max_time:
+      self.relax_time.assign(-1)
       return True
-    max_abs_velocity = tf.reduce_max(tf.abs(pvf(t, x)))
-    if max_abs_velocity < tolerance:
+    if tf.reduce_max(tf.abs(self.pvf(t1, x1))) < self.relax_tol:
+      self.relax_time.assign(t1)
       return True
     return False
 
-  return stop_condition
+
+class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
+  r"""Implements the extension of algorithm 42.9 of ref [1], for the
+  continuous-time case.
+
+  References
+  ----------
+  1. Information Theory, Inference, and Learning Algorithms, chapter 42.
+
+  Parameters
+  ----------
+  units : int
+  activation : str or tensorflow activation, optional
+  tau : float, optional
+    The tau parameter in the equation (42.17) of ref [1].
+  static_solver : ODESolver, optional
+  dynamical_solver : DynamicalODESolver
+  training_time : float, optional
+    Integration time for training state.
+  max_time : float, optional
+    Maximum value of time that trigers the stopping condition.
+  relax_tol: float, optional
+    Tolerance for relaxition.
+  """
+
+  def __init__(self, units,
+               activation='tanh',
+               tau=1,
+               static_solver=RKF56Solver(
+                 dt=1e-1, tol=1e-3, min_dt=1e-2),
+               dynamical_solver=DynamicalRKF56Solver(
+                 dt=1e-1, tol=1e-3, min_dt=1e-2),
+               training_time=1e-1,
+               max_time=1e+3,
+               relax_tol=1e-2,
+               name='ContinuousTimeHopfieldLayer',
+               **kwargs):
+    super().__init__(name=name, **kwargs)
+    self.training_time = tf.convert_to_tensor(training_time)
+
+    self._dense = tf.keras.layers.Dense(
+      units, activation, kernel_constraint=kernel_constraint)
+
+    def pvf(_, x):
+      """C.f. section 42.6 of ref [1]."""
+      return (-x + self._dense(x)) / tau
+
+    self.pvf = pvf
+    self.stop_condition = StopCondition(self.pvf, max_time, relax_tol)
+    self.static_node_fn = get_node_function(static_solver, self.pvf)
+    self.dynamical_node_fn = get_dynamical_node_function(
+      dynamical_solver, static_solver, self.pvf, self.stop_condition)
+
+  def call(self, x, training=None):
+    t0 = tf.constant(0.)
+    if training:
+      y = self.static_node_fn(t0, self.training_time, x)
+    else:
+      y = self.dynamical_node_fn(t0, x)
+    return y
