@@ -27,8 +27,9 @@ tf.config.threading.set_inter_op_parallelism_threads(2)
 
 tf.keras.backend.clear_session()
 
+
 IMAGE_SIZE = (16, 16)
-MEMORY_SIZE = 100
+MEMORY_SIZE = 50
 FLIP_RATIO = 0.2
 
 # for discrete-time Hopfield
@@ -73,27 +74,6 @@ class HopfieldLayer(tf.keras.layers.Layer):
 
   def call(self, x):
     return self._dense(x)
-
-
-@tf.custom_gradient
-def boundary_reflect(x):  # TODO: fix the bug at boundaries.
-  """Inverse of $G$ function in the reference [1].
-
-  $$ G^{-1}: \mathbb{R}^n \mapsto [0, 1]^n $$
-
-  References
-  ----------
-  1. Diffusions for Global Optimization, S. Geman and C. Hwang
-  """
-  int_i = tf.cast(x, 'int32')
-  i = tf.cast(int_i, x.dtype)
-  delta = x - i
-  y = tf.where(int_i % 2 == 0, x, i + 1 - x)
-
-  def grad_fn(dy):
-    return tf.where(int_i % 2 == 0, dy, -dy)
-
-  return y, grad_fn
 
 
 class StopCondition:
@@ -211,7 +191,7 @@ def train(hopfield, x_train, epochs=500):
 def show_denoising_effect(hopfield, X):
   X = tf.convert_to_tensor(X)
   noised_X = tf.where(tf.random.uniform(shape=X.shape) < FLIP_RATIO,
-                      1 - X, X)
+                      -X, X)
   X_star = noised_X
   if isinstance(hopfield, HopfieldLayer):
     for i in range(NUM_RECURTION):
@@ -222,10 +202,10 @@ def show_denoising_effect(hopfield, X):
   else:
     raise ValueError()
 
-  print(tf.nn.moments(tf.abs(noised_X - X), axes=[0, 1]))
-  print(tf.nn.moments(tf.abs(X_star - X), axes=[0, 1]))
-  print(tf.reduce_max(tf.abs(noised_X - X)))
-  print(tf.reduce_max(tf.abs(X_star - X)))
+  tf.print(tf.nn.moments(tf.abs(noised_X - X), axes=[0, 1]))
+  tf.print(tf.nn.moments(tf.abs(X_star - X), axes=[0, 1]))
+  tf.print(tf.reduce_max(tf.abs(noised_X - X)))
+  tf.print(tf.reduce_max(tf.abs(X_star - X)))
 
 
 def create_hopfield_layer(is_continous_time):
