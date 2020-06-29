@@ -1,6 +1,4 @@
 r"""
-Description
------------
 Implement the Hopfield network. Try to learn the Hebb rule (or better) using
 modern SGD methods.
 
@@ -30,19 +28,25 @@ tf.config.threading.set_inter_op_parallelism_threads(2)
 tf.keras.backend.clear_session()
 
 IMAGE_SIZE = (16, 16)
-NUM_MEMORY = 100
+MEMORY_SIZE = 100
 FLIP_RATIO = 0.2
+
+# for discrete-time Hopfield
+NUM_RECURTION = 1000
 
 # for continous-time Hopfield
 # SOLVER = 'rk4'
 SOLVER = 'rkf56'
-TAU = 1
-T = 0.1
-MAX_T = 1000
+DT = 1e-1
+SOLVER_TOL = 1e-3
+MIN_DT = 1e-2
+TAU = 1e+0
+TRAINING_T = 1e-1
+MAX_T = 1e+3
 RELAX_TOL = 1e-2
-DEBUG = 0
 
 
+@tf.function
 def kernel_constraint(kernel):
   w = (kernel + tf.transpose(kernel)) / 2
   w = tf.linalg.set_diag(w, tf.zeros(kernel.shape[0:-1]))
@@ -50,14 +54,16 @@ def kernel_constraint(kernel):
 
 
 class HopfieldLayer(tf.keras.layers.Layer):
-  r"""
-  Description
-  -----------
-  Implements the algorithm 42.9 of ref [1].
+  r"""Implements the algorithm 42.9 of ref [1].
 
   References
   ----------
   1. Information Theory, Inference, and Learning Algorithms, chapter 42.
+
+  Parameters
+  ----------
+  units : int
+  activation : str or tensorflow activation
   """
 
   def __init__(self, units, activation, name='HopfieldLayer', **kwargs):
@@ -71,10 +77,7 @@ class HopfieldLayer(tf.keras.layers.Layer):
 
 @tf.custom_gradient
 def boundary_reflect(x):  # TODO: fix the bug at boundaries.
-  r"""
-  Description
-  -----------
-  Inverse of $G$ function in the reference [1].
+  """Inverse of $G$ function in the reference [1].
 
   $$ G^{-1}: \mathbb{R}^n \mapsto [0, 1]^n $$
 
@@ -94,64 +97,90 @@ def boundary_reflect(x):  # TODO: fix the bug at boundaries.
 
 
 class StopCondition:
+  """Stopping condition for dynamical ODE solver.
 
-  def __init__(self, pvf):
+  Attributes
+  ----------
+  relax_time : tf.Variable
+    The time when relax.
+
+  Parameters
+  ----------
+  pvf : phase_vector_field
+  max_time : float
+  relax_tol : float
+    Tolerance for relaxition.
+  """
+
+  def __init__(self, pvf, max_time, relax_tol):
     self.pvf = pvf
-    self.relax_time = tf.Variable(-1., trainable=False)
+    self.max_time = tf.constant(max_time)
+    self.relax_tol = tf.constant(relax_tol)
 
+    self.relax_time = tf.Variable(0., trainable=False)
+
+  @tf.function
   def __call__(self, t0, x0, t1, x1):
-    if t1 - t0 > MAX_T:
+    if t1 - t0 > self.max_time:
       self.relax_time.assign(-1)
       return True
-    if tf.reduce_max(tf.abs(self.pvf(t1, x1))) < RELAX_TOL:
+    if tf.reduce_max(tf.abs(self.pvf(t1, x1))) < self.relax_tol:
       self.relax_time.assign(t1)
       return True
     return False
 
 
 class ContinousHopfieldLayer(tf.keras.layers.Layer):
-  r"""
-  Description
-  -----------
-  Implements the extension of algorithm 42.9 of ref [1], for the continous-time
-  case.
+  r"""Implements the extension of algorithm 42.9 of ref [1], for the
+  continous-time case.
 
   References
   ----------
   1. Information Theory, Inference, and Learning Algorithms, chapter 42.
+
+  Parameters
+  ----------
+  units : int
+  activation : str or tensorflow activation
+  tau : float
+    The tau parameter in the equation (42.17) of ref [1].
+  static_solver : ODESolver
+  dynamical_solver : DynamicalODESolver
+  training_time : float
+    Integration time for training state.
+  max_time : float
+    Maximum value of time that trigers the stopping condition.
+  relax_tol: float
+    Tolerance for relaxition.
   """
 
-  def __init__(self, units, activation, name='HopfieldLayer', **kwargs):
+  def __init__(self, units, activation, tau,
+               static_solver, dynamical_solver,
+               training_time, max_time, relax_tol,
+               name='ContinousHopfieldLayer', **kwargs):
     super().__init__(name=name, **kwargs)
+    self.training_time = tf.constant(training_time)
+
     self._dense = tf.keras.layers.Dense(
       units, activation, kernel_constraint=kernel_constraint)
 
-    if SOLVER == 'rk4':
-      solver = RK4Solver(0.1)
-      dynamical_solver = DynamicalRK4Solver(0.1)
-    elif SOLVER == 'rkf56':
-      solver = RKF56Solver(0.1, tol=1e-3, min_dt=1e-2)
-      dynamical_solver = DynamicalRKF56Solver(0.1, tol=1e-3, min_dt=1e-2)
-    else:
-      raise ValueError()
-
     def pvf(_, x):
       """C.f. section 42.6 of ref [1]."""
-      return (-x + self._dense(x)) / TAU
+      return (-x + self._dense(x)) / tau
 
     self.pvf = pvf
-    self.stop_condition = StopCondition(self.pvf)
-    self.static_node_fn = get_node_function(solver, self.pvf)
+    self.stop_condition = StopCondition(self.pvf, max_time, relax_tol)
+    self.static_node_fn = get_node_function(static_solver, self.pvf)
     self.dynamical_node_fn = get_dynamical_node_function(
-      dynamical_solver, solver, self.pvf, self.stop_condition)
+      dynamical_solver, static_solver, self.pvf, self.stop_condition)
 
   def call(self, x, training=None):
     t0 = tf.constant(0.)
     if training:
-      t1 = tf.constant(T)
-      return self.static_node_fn(t0, t1, x)
+      y = self.static_node_fn(t0, self.training_time, x)
     else:
-      return self.dynamical_node_fn(t0, x)
+      y = self.dynamical_node_fn(t0, x)
+    return y
 
 
 def pooling(X, size):
@@ -169,12 +198,6 @@ def process_data(X, y):
   return X.astype('float32'), y.astype('float32')
 
 
-mnist = tf.keras.datasets.mnist
-(x_train, y_train), _ = mnist.load_data()
-x_train, y_train = process_data(x_train, y_train)
-x_train = x_train[:NUM_MEMORY]
-
-
 def train(hopfield, x_train, epochs=500):
   model = tf.keras.Sequential([
     hopfield,
@@ -185,17 +208,17 @@ def train(hopfield, x_train, epochs=500):
   model.fit(x_train, y_train, epochs=epochs, verbose=2)
 
 
-def show_denoising_effect(hopfield):
-  X = tf.constant(x_train)
+def show_denoising_effect(hopfield, X):
+  X = tf.convert_to_tensor(X)
   noised_X = tf.where(tf.random.uniform(shape=X.shape) < FLIP_RATIO,
                       1 - X, X)
   X_star = noised_X
   if isinstance(hopfield, HopfieldLayer):
-    for i in range(100):
+    for i in range(NUM_RECURTION):
       X_star = hopfield(X_star)
   elif isinstance(hopfield, ContinousHopfieldLayer):
     X_star = hopfield(X_star)
-    print('Relaxed at:', hopfield.stop_condition.relax_time)
+    tf.print('relaxed at:', hopfield.stop_condition.relax_time)
   else:
     raise ValueError()
 
@@ -205,8 +228,30 @@ def show_denoising_effect(hopfield):
   print(tf.reduce_max(tf.abs(X_star - X)))
 
 
-units = IMAGE_SIZE[0] * IMAGE_SIZE[1]
-# hopfield = HopfieldLayer(units, 'tanh')
-hopfield = ContinousHopfieldLayer(units, 'tanh')
+def create_hopfield_layer(is_continous_time):
+  units = IMAGE_SIZE[0] * IMAGE_SIZE[1]
+  if not is_continous_time:
+    hopfield = HopfieldLayer(units, 'tanh')
+  else:
+    if SOLVER == 'rk4':
+      solver = RK4Solver(DT)
+      dynamical_solver = DynamicalRK4Solver(DT)
+    elif SOLVER == 'rkf56':
+      solver = RKF56Solver(DT, tol=SOLVER_TOL, min_dt=MIN_DT)
+      dynamical_solver = DynamicalRKF56Solver(DT, tol=SOLVER_TOL, min_dt=MIN_DT)
+    else:
+      raise ValueError()
+    hopfield = ContinousHopfieldLayer(
+      units, 'tanh', TAU, solver, dynamical_solver, TRAINING_T, MAX_T,
+      RELAX_TOL)
+  return hopfield
+
+
+mnist = tf.keras.datasets.mnist
+(x_train, y_train), _ = mnist.load_data()
+x_train, y_train = process_data(x_train, y_train)
+x_train = x_train[:MEMORY_SIZE]
+
+hopfield = create_hopfield_layer(is_continous_time=True)
 train(hopfield, x_train)
-show_denoising_effect(hopfield)
+show_denoising_effect(hopfield, x_train)
