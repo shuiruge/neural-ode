@@ -1,10 +1,10 @@
 """
 Implement the Hopfield network. Try to learn the Hebb rule (or better) using
-modern SGD methods. C.f. algorithm 42.9 of ref [1].
+modern SGD methods. C.f. algorithm 42.9 of ref [1]_.
 
 References
 ----------
-1. Information Theory, Inference, and Learning Algorithms.
+.. [1] D. Mackay, "Information Theory, Inference, and Learning Algorithms".
 """
 
 import tensorflow as tf
@@ -33,59 +33,63 @@ def kernel_constraint(kernel):
 
 
 class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
-  r"""Implements the algorithm 42.9 of ref [1].
+  r"""Implements the algorithm 42.9 of ref [1]_.
 
   References
   ----------
-  1. Information Theory, Inference, and Learning Algorithms.
+  .. [1] D. Mackay, "Information Theory, Inference, and Learning Algorithms".
 
   Examples
   --------
-  MEMORY_SIZE = 50
-  IMAGE_SIZE = (16, 16)
-  UNITS = 64
-  FLIP_RATIO = 0.2
+  Basic configurations
 
-  mnist = tf.keras.datasets.mnist
-  (x_train, _), _ = mnist.load_data()
-  X = x_train[:MEMORY_SIZE]
-  X = X / 255
-  X = np.expand_dims(X, axis=-1)
-  X = tf.image.resize(X, IMAGE_SIZE).numpy()
-  X = np.reshape(X, [-1, IMAGE_SIZE[0] * IMAGE_SIZE[1]])
-  X = X * 2 - 1
-  X = np.where(X < 0, -1, 1)
+  >>> MEMORY_SIZE = 50
+  >>> IMAGE_SIZE = (16, 16)
+  >>> UNITS = 64
+  >>> FLIP_RATIO = 0.2
 
-  # create and train a Hopfield layer
-  hopfield_layer = DiscreteTimeHopfieldLayer(UNITS)
-  # wraps the `hopfield` into a `tf.keras.Model` for training
-  model = tf.keras.Sequential([
-    hopfield_layer,
-  ])
+  Prepare dataset
 
-  def loss_fn(y_true, y_pred):
-    rescale = lambda x: x / 2 + 0.5  # rescale from [-1, 1] to [0, 1].
-    y_true = rescale(y_true)
-    y_pred = rescale(y_pred)
-    return tf.reduce_mean(tf.losses.binary_crossentropy(y_true, y_pred))
+  >>> mnist = tf.keras.datasets.mnist
+  >>> (x_train, _), _ = mnist.load_data()
+  >>> X = x_train[:MEMORY_SIZE]
+  >>> X = X / 255
+  >>> X = np.expand_dims(X, axis=-1)
+  >>> X = tf.image.resize(X, IMAGE_SIZE).numpy()
+  >>> X = np.reshape(X, [-1, IMAGE_SIZE[0] * IMAGE_SIZE[1]])
+  >>> X = X * 2 - 1
+  >>> X = np.where(X < 0, -1, 1)
 
-  optimizer = tf.optimizers.Adam(1e-3)
-  model.compile(loss=loss_fn, optimizer=optimizer)
-  model.fit(X, X, epochs=epochs, verbose=2)
+  Create and train a Hopfield layer
 
-  # denoise effect
-  noised_X = tf.where(tf.random.uniform(shape=X.shape) < FLIP_RATIO,
-                      -X, X)
-  X_star = hopfield_layer(noised_X)
-  if isinstance(hopfield_layer, ContinuousTimeHopfieldLayer):
-    tf.print('relaxed at:', hopfield_layer.stop_condition.relax_time)
+  >>> hopfield_layer = DiscreteTimeHopfieldLayer(UNITS)
+  >>> # wraps the `hopfield` into a `tf.keras.Model` for training
+  >>> model = tf.keras.Sequential([
+  ... hopfield_layer,
+  ... ])
+  >>> def loss_fn(y_true, y_pred):
+  ...   rescale = lambda x: x / 2 + 0.5  # rescale from [-1, 1] to [0, 1].
+  ...   y_true = rescale(y_true)
+  ...   y_pred = rescale(y_pred)
+  ...   return tf.reduce_mean(tf.losses.binary_crossentropy(y_true, y_pred))
+  >>> optimizer = tf.optimizers.Adam(1e-3)
+  >>> model.compile(loss=loss_fn, optimizer=optimizer)
+  >>> model.fit(X, X, epochs=epochs, verbose=2)
 
-  tf.print('(mean, var) of noised errors:',
-           tf.nn.moments(tf.abs(noised_X - X), axes=[0, 1]))
-  tf.print('(mean, var) of relaxed errors:',
-           tf.nn.moments(tf.abs(X_star - X), axes=[0, 1]))
-  tf.print('max of noised error:', tf.reduce_max(tf.abs(noised_X - X)))
-  tf.print('max of relaxed error:', tf.reduce_max(tf.abs(X_star - X)))
+  Test the denoising effect
+
+  >>> noised_X = tf.where(tf.random.uniform(shape=X.shape) < FLIP_RATIO,
+  ...                     -X, X)
+  >>> X_star = hopfield_layer(noised_X)
+  >>> if isinstance(hopfield_layer, ContinuousTimeHopfieldLayer):
+  ...   tf.print('relaxed at:', hopfield_layer.stop_condition.relax_time)
+
+  >>> tf.print('(mean, var) of noised errors:',
+  ...          tf.nn.moments(tf.abs(noised_X - X), axes=[0, 1]))
+  >>> tf.print('(mean, var) of relaxed errors:',
+  ...          tf.nn.moments(tf.abs(X_star - X), axes=[0, 1]))
+  >>> tf.print('max of noised error:', tf.reduce_max(tf.abs(noised_X - X)))
+  >>> tf.print('max of relaxed error:', tf.reduce_max(tf.abs(X_star - X)))
 
   Parameters
   ----------
@@ -154,60 +158,64 @@ class StopCondition:
 
 
 class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
-  r"""Implements the extension of algorithm 42.9 of ref [1], for the
+  r"""Implements the extension of algorithm 42.9 of ref [1]_, for the
   continuous-time case.
 
   References
   ----------
-  1. Information Theory, Inference, and Learning Algorithms.
+  .. [1] D. Mackay, "Information Theory, Inference, and Learning Algorithms".
 
   Examples
   --------
-  MEMORY_SIZE = 50
-  IMAGE_SIZE = (16, 16)
-  UNITS = 64
-  FLIP_RATIO = 0.2
+  Basic configurations
 
-  mnist = tf.keras.datasets.mnist
-  (x_train, _), _ = mnist.load_data()
-  X = x_train[:MEMORY_SIZE]
-  X = X / 255
-  X = np.expand_dims(X, axis=-1)
-  X = tf.image.resize(X, IMAGE_SIZE).numpy()
-  X = np.reshape(X, [-1, IMAGE_SIZE[0] * IMAGE_SIZE[1]])
-  X = X * 2 - 1
-  X = np.where(X < 0, -1, 1)
+  >>> MEMORY_SIZE = 50
+  >>> IMAGE_SIZE = (16, 16)
+  >>> UNITS = 64
+  >>> FLIP_RATIO = 0.2
 
-  # create and train a Hopfield layer
-  hopfield_layer = ContinuousTimeHopfieldLayer(UNITS)
-  # wraps the `hopfield` into a `tf.keras.Model` for training
-  model = tf.keras.Sequential([
-    hopfield_layer,
-  ])
+  Prepare dataset
 
-  def loss_fn(y_true, y_pred):
-    rescale = lambda x: x / 2 + 0.5  # rescale from [-1, 1] to [0, 1].
-    y_true = rescale(y_true)
-    y_pred = rescale(y_pred)
-    return tf.reduce_mean(tf.losses.binary_crossentropy(y_true, y_pred))
+  >>> mnist = tf.keras.datasets.mnist
+  >>> (x_train, _), _ = mnist.load_data()
+  >>> X = x_train[:MEMORY_SIZE]
+  >>> X = X / 255
+  >>> X = np.expand_dims(X, axis=-1)
+  >>> X = tf.image.resize(X, IMAGE_SIZE).numpy()
+  >>> X = np.reshape(X, [-1, IMAGE_SIZE[0] * IMAGE_SIZE[1]])
+  >>> X = X * 2 - 1
+  >>> X = np.where(X < 0, -1, 1)
 
-  optimizer = tf.optimizers.Adam(1e-3)
-  model.compile(loss=loss_fn, optimizer=optimizer)
-  model.fit(X, X, epochs=epochs, verbose=2)
+  Create and train a Hopfield layer
 
-  # denoise effect
-  noised_X = tf.where(tf.random.uniform(shape=X.shape) < FLIP_RATIO,
-                      -X, X)
-  X_star = hopfield_layer(noised_X)
-  if isinstance(hopfield_layer, ContinuousTimeHopfieldLayer):
-    tf.print('relaxed at:', hopfield_layer.stop_condition.relax_time)
+  >>> hopfield_layer = ContinuousTimeHopfieldLayer(UNITS)
+  >>> # wraps the `hopfield` into a `tf.keras.Model` for training
+  >>> model = tf.keras.Sequential([
+  ... hopfield_layer,
+  ... ])
+  >>> def loss_fn(y_true, y_pred):
+  ...   rescale = lambda x: x / 2 + 0.5  # rescale from [-1, 1] to [0, 1].
+  ...   y_true = rescale(y_true)
+  ...   y_pred = rescale(y_pred)
+  ...   return tf.reduce_mean(tf.losses.binary_crossentropy(y_true, y_pred))
+  >>> optimizer = tf.optimizers.Adam(1e-3)
+  >>> model.compile(loss=loss_fn, optimizer=optimizer)
+  >>> model.fit(X, X, epochs=epochs, verbose=2)
 
-  tf.print('(mean, var) of noised errors:',
-           tf.nn.moments(tf.abs(noised_X - X), axes=[0, 1]))
-  tf.print('(mean, var) of relaxed errors:',
-           tf.nn.moments(tf.abs(X_star - X), axes=[0, 1]))
-  tf.print('max of noised error:', tf.reduce_max(tf.abs(noised_X - X)))
-  tf.print('max of relaxed error:', tf.reduce_max(tf.abs(X_star - X)))
+  Test the denoising effect
+
+  >>> noised_X = tf.where(tf.random.uniform(shape=X.shape) < FLIP_RATIO,
+  ...                     -X, X)
+  >>> X_star = hopfield_layer(noised_X)
+  >>> if isinstance(hopfield_layer, ContinuousTimeHopfieldLayer):
+  ...   tf.print('relaxed at:', hopfield_layer.stop_condition.relax_time)
+
+  >>> tf.print('(mean, var) of noised errors:',
+  ...          tf.nn.moments(tf.abs(noised_X - X), axes=[0, 1]))
+  >>> tf.print('(mean, var) of relaxed errors:',
+  ...          tf.nn.moments(tf.abs(X_star - X), axes=[0, 1]))
+  >>> tf.print('max of noised error:', tf.reduce_max(tf.abs(noised_X - X)))
+  >>> tf.print('max of relaxed error:', tf.reduce_max(tf.abs(X_star - X)))
 
   Parameters
   ----------
@@ -215,7 +223,7 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
   activation : str or tensorflow_activation, optional
     Maps onto [-1, 1].
   tau : float, optional
-    The tau parameter in the equation (42.17) of ref [1].
+    The tau parameter in the equation (42.17) of ref [1]_.
   static_solver : ODESolver, optional
   dynamical_solver : DynamicalODESolver
   training_time : float, optional
@@ -245,7 +253,7 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
       units, activation, kernel_constraint=kernel_constraint)
 
     def pvf(_, x):
-      """C.f. section 42.6 of ref [1]."""
+      """C.f. section 42.6 of ref [1]_."""
       return (-x + self._dense(x)) / tau
 
     self.pvf = pvf
