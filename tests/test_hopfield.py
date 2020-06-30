@@ -15,6 +15,10 @@ IMAGE_SIZE = (16, 16)
 MEMORY_SIZE = 50
 FLIP_RATIO = 0.2
 IS_CONTINUOUS_TIME = True
+IS_BINARY = True
+# LOSS = 'mae'
+LOSS = 'binary_crossentropy'
+EPOCHS = 500
 
 
 def pooling(X, size):
@@ -23,23 +27,35 @@ def pooling(X, size):
   return X
 
 
-def process_data(X, y):
+def process_data(X, y, is_binary):
   X = X / 255
   X = pooling(X, IMAGE_SIZE)
   X = np.reshape(X, [-1, IMAGE_SIZE[0] * IMAGE_SIZE[1]])
-  X = np.where(X < 0.5, -1, 1)
+  X = X * 2 - 1
+  if is_binary:
+    X = np.where(X < 0, -1, 1)
   y = np.eye(10)[y]
   return X.astype('float32'), y.astype('float32')
 
 
-def train(hopfield, x_train, epochs=500):
+def train(hopfield, x_train, loss, epochs):
+  # wraps the `hopfield` into a `tf.keras.Model` for training
   model = tf.keras.Sequential([
     hopfield,
-    tf.keras.layers.Lambda(lambda x: x / 2 + 0.5),
   ])
-  model.compile(loss='binary_crossentropy', optimizer='adam')
-  y_train = x_train / 2 + 0.5
-  model.fit(x_train, y_train, epochs=epochs, verbose=2)
+
+  def rescale(x):
+    """Rescales x from [-1, 1] to [0, 1]."""
+    return x / 2 + 0.5
+
+  def loss_fn(y_true, y_pred):
+    y_true = rescale(y_true)
+    y_pred = rescale(y_pred)
+    return tf.reduce_mean(getattr(tf.losses, loss)(y_true, y_pred))
+
+  optimizer = tf.optimizers.Adam(1e-3)
+  model.compile(loss=loss_fn, optimizer=optimizer)
+  model.fit(x_train, x_train, epochs=epochs, verbose=2)
 
 
 def show_denoising_effect(hopfield, X):
@@ -69,9 +85,9 @@ def create_hopfield_layer():
 
 mnist = tf.keras.datasets.mnist
 (x_train, y_train), _ = mnist.load_data()
-x_train, y_train = process_data(x_train, y_train)
+x_train, y_train = process_data(x_train, y_train, IS_BINARY)
 x_train = x_train[:MEMORY_SIZE]
 
 hopfield = create_hopfield_layer()
-train(hopfield, x_train)
+train(hopfield, x_train, LOSS, EPOCHS)
 show_denoising_effect(hopfield, x_train)
