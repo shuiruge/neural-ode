@@ -17,7 +17,8 @@ FLIP_RATIO = 0.2
 IS_BENCHMARK = False
 USE_HEBB_RULE_INITIALIZER = False
 IS_CONTINUOUS_TIME = True
-IS_BINARY = True
+# DATA_QUANTIZE_METHOD = 'binary'
+DATA_QUANTIZE_METHOD = 'four-piece'
 # LOSS = 'mae'
 LOSS = 'binary_crossentropy'
 EPOCHS = 500
@@ -29,13 +30,19 @@ def pooling(X, size):
   return X
 
 
-def process_data(X, image_size, is_binary, memory_size):
+def process_data(X, image_size, data_quantize_method, memory_size):
   X = X / 255
   X = pooling(X, image_size)
   X = np.reshape(X, [-1, image_size[0] * image_size[1]])
   X = X * 2 - 1
-  if is_binary:
+  if data_quantize_method == 'binary':
     X = np.where(X < 0, -1, 1)
+  elif data_quantize_method == 'four-piece':
+    X = np.where(X > 0.5, 1,
+                 np.where(X > 0, 0.5,
+                          np.where(X > -0.5, -0.5, -1)))
+  else:
+    pass
   X = X[:memory_size]
   return X.astype('float32')
 
@@ -97,7 +104,7 @@ def create_hopfield_layer(units, is_continuous_time):
 
 mnist = tf.keras.datasets.mnist
 (x_train, _), _ = mnist.load_data()
-x_train = process_data(x_train, IMAGE_SIZE, IS_BINARY, MEMORY_SIZE)
+x_train = process_data(x_train, IMAGE_SIZE, DATA_QUANTIZE_METHOD, MEMORY_SIZE)
 
 hopfield = create_hopfield_layer(IMAGE_SIZE[0] * IMAGE_SIZE[1],
                                  IS_CONTINUOUS_TIME)
