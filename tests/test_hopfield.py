@@ -14,6 +14,8 @@ tf.keras.backend.clear_session()
 IMAGE_SIZE = (16, 16)
 MEMORY_SIZE = 50
 FLIP_RATIO = 0.2
+IS_BENCHMARK = False
+USE_HEBB_RULE_INITIALIZER = False
 IS_CONTINUOUS_TIME = True
 IS_BINARY = True
 # LOSS = 'mae'
@@ -27,20 +29,29 @@ def pooling(X, size):
   return X
 
 
-def process_data(X, y, is_binary):
+def process_data(X, image_size, is_binary, memory_size):
   X = X / 255
-  X = pooling(X, IMAGE_SIZE)
-  X = np.reshape(X, [-1, IMAGE_SIZE[0] * IMAGE_SIZE[1]])
+  X = pooling(X, image_size)
+  X = np.reshape(X, [-1, image_size[0] * image_size[1]])
   X = X * 2 - 1
   if is_binary:
     X = np.where(X < 0, -1, 1)
-  y = np.eye(10)[y]
-  return X.astype('float32'), y.astype('float32')
+  X = X[:memory_size]
+  return X.astype('float32')
 
 
-def train(hopfield, x_train, loss, epochs):
+def hebb_rule_initializer(X):
+  n = X.shape[-1]
+  w = np.matmul(np.transpose(X), X)
+  w = w / np.std(w) / n  # normalize to w ~ N(0, 1/n) (Xavi initializer).
+  b = np.zeros([n])
+  return w, b
+
+
+def train(hopfield, x_train, loss, epochs, use_hebb_rule_initializer):
   # wraps the `hopfield` into a `tf.keras.Model` for training
   model = tf.keras.Sequential([
+    tf.keras.Input([x_train.shape[-1]]),
     hopfield,
   ])
 
@@ -55,12 +66,14 @@ def train(hopfield, x_train, loss, epochs):
 
   optimizer = tf.optimizers.Adam(1e-3)
   model.compile(loss=loss_fn, optimizer=optimizer)
+  if use_hebb_rule_initializer:
+    model.set_weights(hebb_rule_initializer(x_train))
   model.fit(x_train, x_train, epochs=epochs, verbose=2)
 
 
-def show_denoising_effect(hopfield, X):
+def show_denoising_effect(hopfield, X, flip_ratio):
   X = tf.convert_to_tensor(X)
-  noised_X = tf.where(tf.random.uniform(shape=X.shape) < FLIP_RATIO,
+  noised_X = tf.where(tf.random.uniform(shape=X.shape) < flip_ratio,
                       -X, X)
   X_star = hopfield(noised_X)
   if isinstance(hopfield, ContinuousTimeHopfieldLayer):
@@ -74,9 +87,8 @@ def show_denoising_effect(hopfield, X):
   tf.print('max of relaxed error:', tf.reduce_max(tf.abs(X_star - X)))
 
 
-def create_hopfield_layer():
-  units = IMAGE_SIZE[0] * IMAGE_SIZE[1]
-  if IS_CONTINUOUS_TIME:
+def create_hopfield_layer(units, is_continuous_time):
+  if is_continuous_time:
     hopfield = ContinuousTimeHopfieldLayer(units)
   else:
     hopfield = DiscreteTimeHopfieldLayer(units)
@@ -84,10 +96,13 @@ def create_hopfield_layer():
 
 
 mnist = tf.keras.datasets.mnist
-(x_train, y_train), _ = mnist.load_data()
-x_train, y_train = process_data(x_train, y_train, IS_BINARY)
-x_train = x_train[:MEMORY_SIZE]
+(x_train, _), _ = mnist.load_data()
+x_train = process_data(x_train, IMAGE_SIZE, IS_BINARY, MEMORY_SIZE)
 
-hopfield = create_hopfield_layer()
-train(hopfield, x_train, LOSS, EPOCHS)
-show_denoising_effect(hopfield, x_train)
+hopfield = create_hopfield_layer(IMAGE_SIZE[0] * IMAGE_SIZE[1],
+                                 IS_CONTINUOUS_TIME)
+if IS_BENCHMARK:
+  train(hopfield, x_train, LOSS, 0, True)
+else:
+  train(hopfield, x_train, LOSS, EPOCHS, USE_HEBB_RULE_INITIALIZER)
+show_denoising_effect(hopfield, x_train, FLIP_RATIO)
