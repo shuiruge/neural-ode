@@ -3,7 +3,9 @@
 <style|generic>
 
 <\body>
-  <section|Adjoint Method>
+  <section|Neural ODE>
+
+  <subsection|Adjoint Method>
 
   Let <math|M> a manifold, and <math|x<around*|(|t|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>,M|)>>
   a trajectory, obeying
@@ -99,152 +101,182 @@
     </equation*>
   </proof>
 
-  <section|Continuous-time Hopfield Network>
+  <section|Hopfield Network>
 
   <subsection|Discrete-time Hopfield Network>
 
-  Consider Hopfield network. Let <math|x<around*|(|t|)>\<in\><around*|{|-1,+1|}><rsup|N>>
-  denotes the state of the network at descrete time <math|t=0,1,\<ldots\>>;
-  and <math|W> a matrix on <math|\<bbb-R\><rsup|N>>, essentially ensuring
-  <math|W<rsub|\<alpha\> \<beta\>>=W<rsub|\<beta\> \<alpha\>>> and
-  <math|W<rsub|\<alpha\> \<alpha\>>=0>. Define energy
-  <math|E<rsub|W><around*|(|x<around*|(|t|)>|)>\<assign\>-W<rsub|\<alpha\>\<beta\>>
-  x<rsup|\<alpha\>><around*|(|t|)> x<rsup|\<beta\>><around*|(|t|)>>.
+  <\definition>
+    [Discrete-time Hopfield Network]
 
-  <\theorem>
-    Along dynamics <math|x<rsub|\<alpha\>><around*|(|t+1|)>=sign<around*|[|W<rsub|\<alpha\>
-    \<beta\>> x<rsup|\<beta\>><around*|(|t|)>|]>>,
-    <math|E<rsub|W><around*|(|x<around*|(|t+1|)>|)>-E<rsub|W><around*|(|x<around*|(|t|)>|)>\<leqslant\>0>.
-  </theorem>
+    Let <math|t\<in\>\<bbb-N\>> and <math|x\<in\><around*|{|-1,+1|}><rsup|d>>,
+    <math|W\<in\>\<bbb-R\><rsup|d>\<times\>\<bbb-R\><rsup|d>> with
+    <math|W<rsub|\<alpha\> \<beta\>>=W<rsub|\<beta\> \<alpha\>>> and
+    <math|W<rsub|\<alpha\> \<alpha\>>=0>, and
+    <math|b\<in\>\<bbb-R\><rsup|d>>. Define discrete-time dynamics
+
+    <\equation*>
+      x<rsup|\<alpha\>><around*|(|t+1|)>=sign<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+      x<rsup|\<beta\>><around*|(|t|)>+b<rsup|\<alpha\>>|)>.
+    </equation*>
+  </definition>
+
+  <\lemma>
+    Let <math|<around*|(|x,W,b|)>> a discrete-time Hopfield network. Define
+    <math|<with|math-font|cal|E><around*|(|x|)>\<assign\>-<around*|(|1/2|)>W<rsub|\<alpha\>\<beta\>>
+    x<rsup|\<alpha\>> x<rsup|\<beta\>>-b<rsub|\<alpha\>>x<rsup|\<alpha\>>>.
+    Then <math|<with|math-font|cal|E><around*|(|x<around*|(|t+1|)>|)>-<with|math-font|cal|E><around*|(|x<around*|(|t|)>|)>\<leqslant\>0>.
+  </lemma>
 
   <\proof>
-    Consider the async-updation of Hopfield network. Let's change the
+    Consider async-updation of Hopfield network, that is, change the
     component at dimension <math|<wide|\<alpha\>|^>>, i.e.
     <math|x<rprime|'><rsub|<wide|\<alpha\>|^>>=sign<around*|[|W<rsub|<wide|\<alpha\>|^>
-    \<beta\>> x<rsup|\<beta\>>|]>>, then
+    \<beta\>> x<rsup|\<beta\>>+b<rsub|<wide|\<alpha\>|^>>|]>>, then
 
     <\align>
-      <tformat|<table|<row|<cell|E<rsub|W><around*|(|x<rprime|'>|)>-E<rsub|W><around*|(|x|)>=>|<cell|-W<rsub|\<alpha\>\<beta\>>
-      x<rprime|'><rsup|\<alpha\>>x<rprime|'><rsup|\<beta\>>+W<rsub|\<alpha\>\<beta\>>
-      x<rsup|\<alpha\>>x<rsup|\<beta\>>>>|<row|<cell|=>|<cell|-2
+      <tformat|<table|<row|<cell|<with|math-font|cal|E><around*|(|x<rprime|'>|)>-<with|math-font|cal|E><around*|(|x|)>=>|<cell|-<frac|1|2>W<rsub|\<alpha\>\<beta\>>
+      x<rprime|'><rsup|\<alpha\>>x<rprime|'><rsup|\<beta\>>-b<rsub|\<alpha\>>x<rprime|'><rsup|\<alpha\>>+<frac|1|2>W<rsub|\<alpha\>\<beta\>>
+      x<rsup|\<alpha\>>x<rsup|\<beta\>>+b<rsub|\<alpha\>>x<rsup|\<alpha\>>>>|<row|<cell|=>|<cell|-2
       <around*|(|x<rprime|'><rsup|<wide|\<alpha\>|^>>-x<rsup|<wide|\<alpha\>|^>>|)>
-      W<rsub|<wide|\<alpha\>|^> \<beta\>> x<rsup|\<beta\>>,>>>>
+      <around*|(|W<rsub|<wide|\<alpha\>|^> \<beta\>>
+      x<rsup|\<beta\>>+b<rsub|<wide|\<alpha\>|^>>|)>,>>>>
     </align>
 
     which employs conditions <math|W<rsub|\<alpha\> \<beta\>>=W<rsub|\<beta\>
     \<alpha\>>> and <math|W<rsub|\<alpha\> \<alpha\>>=0>. Next, we prove
     that, combining with <math|x<rprime|'><rsub|<wide|\<alpha\>|^>>=sign<around*|[|W<rsub|<wide|\<alpha\>|^>
-    \<beta\>> x<rsup|\<beta\>>|]>>, this implies
-    <math|E<rsub|W><around*|(|x<rprime|'>|)>-E<rsub|W><around*|(|x|)>\<leqslant\>0>.
+    \<beta\>> x<rsup|\<beta\>>+b<rsub|<wide|\<alpha\>|^>>|]>>, this implies
+    <math|<with|math-font|cal|E><around*|(|x<rprime|'>|)>-<with|math-font|cal|E><around*|(|x|)>\<leqslant\>0>.
 
     If <math|<around*|(|x<rprime|'><rsup|<wide|\<alpha\>|^>>-x<rsup|<wide|\<alpha\>|^>>|)>\<gtr\>0>,
     then <math|x<rprime|'><rsup|<wide|\<alpha\>|^>>=1> and
     <math|x<rsup|<wide|\<alpha\>|^>>=-1>. Since
     <math|x<rprime|'><rsub|<wide|\<alpha\>|^>>=sign<around*|[|W<rsub|<wide|\<alpha\>|^>
-    \<beta\>> x<rsup|\<beta\>>|]>>, <math|W<rsub|<wide|\<alpha\>|^> \<beta\>>
-    x<rsup|\<beta\>>\<gtr\>0>. Then <math|E<rsub|W><around*|(|x<rprime|'>|)>-E<rsub|W><around*|(|x|)>\<less\>0>.
+    \<beta\>> x<rsup|\<beta\>>+b<rsub|<wide|\<alpha\>|^>>|]>>,
+    <math|W<rsub|<wide|\<alpha\>|^> \<beta\>>
+    x<rsup|\<beta\>>+b<rsub|<wide|\<alpha\>|^>>\<gtr\>0>. Then
+    <math|<with|math-font|cal|E><around*|(|x<rprime|'>|)>-<with|math-font|cal|E><around*|(|x|)>\<less\>0>.
     Contrarily, if <math|<around*|(|x<rprime|'><rsup|<wide|\<alpha\>|^>>-x<rsup|<wide|\<alpha\>|^>>|)>\<less\>0>,
     then <math|x<rprime|'><rsup|<wide|\<alpha\>|^>>=-1> and
     <math|x<rsup|<wide|\<alpha\>|^>>=1>, implying
-    <math|W<rsub|<wide|\<alpha\>|^> \<beta\>> x<rsup|\<beta\>>\<less\>0>.
-    Also <math|E<rsub|W><around*|(|x<rprime|'>|)>-E<rsub|W><around*|(|x|)>\<less\>0>.
-    Otherwise, <math|E<rsub|W><around*|(|x<rprime|'>|)>-E<rsub|W><around*|(|x|)>=0>.
-    So, we conclude <math|E<rsub|W><around*|(|x<rprime|'>|)>-E<rsub|W><around*|(|x|)>\<leqslant\>0>.
+    <math|W<rsub|<wide|\<alpha\>|^> \<beta\>>
+    x<rsup|\<beta\>>+b<rsub|<wide|\<alpha\>|^>>\<less\>0>. Also
+    <math|<with|math-font|cal|E><around*|(|x<rprime|'>|)>-<with|math-font|cal|E><around*|(|x|)>\<less\>0>.
+    Otherwise, <math|<with|math-font|cal|E><around*|(|x<rprime|'>|)>-<with|math-font|cal|E><around*|(|x|)>=0>.
+    So, we conclude <math|<with|math-font|cal|E><around*|(|x<rprime|'>|)>-<with|math-font|cal|E><around*|(|x|)>\<leqslant\>0>.
   </proof>
 
-  Since the states of the network are finite, the <math|E<rsub|W>> is lower
-  bounded. Thus the network converges (relaxes) at finite <math|t>.
-
-  <subsection|Continuum of Time>
-
-  Let's consider applying the convergence of Hopfield network to neural ODE
-  for generic network architecture. This makes the discrete time <math|t> a
-  continuum.
-
   <\theorem>
-    <label|hopfield dynamics>Let <math|M> be a Riemann manifold. Given
-    <math|<with|math-font|cal|E>\<in\>C<rsup|1><around*|(|M,\<bbb-R\>|)>>.
-    For <math|\<forall\>x<around*|(|t|)>\<in\>C<rsup|1><around*|(|\<bbb-R\>,M|)>>
-    s.t.
-
-    <\equation*>
-      <frac|d x<rsup|\<alpha\>>|d t><around*|(|t|)>=-\<nabla\><rsup|\<alpha\>><with|math-font|cal|E><around*|(|x<around*|(|t|)>|)>,
-    </equation*>
-
-    then <math|d<with|math-font|cal|E>/dt\<leqslant\>0> along
-    <math|x<around*|(|t|)>>. Further, if <math|<with|math-font|cal|E>> is
-    lower bounded, then for <math|\<forall\>\<epsilon\>\<gtr\>0>
+    Let <math|<around*|(|x,W,b|)>> a discrete-time Hopfield network. Then
     <math|\<exists\>t<rsub|\<star\>>\<less\>+\<infty\>>, s.t.
-    <math|<around*|\||\<mathd\>x<rsup|\<alpha\>>/\<mathd\>t|\|>\<less\>\<epsilon\>>
-    at <math|t<rsub|\<star\>>>.
+    <math|x<around*|(|t+1|)>=x<around*|(|t|)>>.
   </theorem>
 
   <\proof>
-    We have
+    Since the states of the network are finite, the
+    <math|<with|math-font|cal|E>> is lower bounded. Thus
+    <math|\<exists\>t<rsub|\<star\>>\<less\>+\<infty\>>, s.t.
+    <math|x<around*|(|t+1|)>=x<around*|(|t|)>>.
+  </proof>
+
+  <subsection|Continuous-time Hopfield Network>
+
+  <\definition>
+    [Continuous-time Hopfield Network]
+
+    Let <math|t\<in\>\<bbb-N\>> and <math|x\<in\><around*|[|-1,+1|]><rsup|d>>,
+    <math|W\<in\>\<bbb-R\><rsup|d>\<times\>\<bbb-R\><rsup|d>> with
+    <math|W<rsub|\<alpha\> \<beta\>>=W<rsub|\<beta\> \<alpha\>>> and
+    <math|W<rsub|\<alpha\> \<alpha\>>=0>, and
+    <math|b\<in\>\<bbb-R\><rsup|d>>. Define dynamics
 
     <\equation*>
-      <frac|d<with|math-font|cal|E>|d t><around*|(|t|)>=\<nabla\><rsub|\<alpha\>><with|math-font|cal|E><around*|(|x<around*|(|t|)>|)><frac|d
-      x<rsup|\<alpha\>>|d t><around*|(|t|)>=-\<nabla\><rsub|\<alpha\>><with|math-font|cal|E><around*|(|x<around*|(|t|)>|)>
-      \<nabla\><rsup|\<alpha\>><with|math-font|cal|E><around*|(|x<around*|(|t|)>|)>\<leqslant\>0.
+      \<tau\><frac|\<mathd\>x<rsup|\<alpha\>>|\<mathd\>t><around*|(|t|)>=-x<rsup|\<alpha\>><around*|(|t|)>+f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+      x<rsup|\<beta\>><around*|(|t|)>+b<rsup|\<alpha\>>|)>,
     </equation*>
+
+    where <math|\<tau\>> a constant and <math|f:\<bbb-R\>\<rightarrow\><around*|[|-1,1|]>>
+    being increasing. The <math|<around*|(|x,W,b;\<tau\>,f|)>> is called a
+    continuous-time Hopfield network.
+  </definition>
+
+  <\remark>
+    With
+
+    <\equation*>
+      \<tau\><frac|x<rsup|\<alpha\>><around*|(|t+\<Delta\>t|)>-x<rsup|\<alpha\>><around*|(|t|)>|\<Delta\>t>=<around*|\<nobracket\>|-x<rsup|\<alpha\>><around*|(|t|)>+f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+      x<rsup|\<beta\>><around*|(|t|)>+b<rsup|\<alpha\>>|)>|)>.
+    </equation*>
+
+    Setting <math|\<Delta\>t=\<tau\>> gives and
+    <math|f<around*|(|.|)>=sign<around*|(|.|)>> gives
+
+    <\equation*>
+      x<rsup|\<alpha\>><around*|(|t+\<tau\>|)>=sign<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+      x<rsup|\<beta\>><around*|(|t|)>+b<rsup|\<alpha\>>|)>,
+    </equation*>
+
+    which is the same as the discrete-time Hopfield network.
+  </remark>
+
+  <\lemma>
+    Let <math|<around*|(|x,W,b;\<tau\>,f|)>> a continous-time Hopfield
+    network. Define <math|a<rsup|\<alpha\>>\<assign\>W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+    x<rsup|\<beta\>>+b<rsup|\<alpha\>>> and
+    <math|y<rsup|\<alpha\>>\<assign\>f<around*|(|a<rsup|\<alpha\>>|)>>, then
+
+    <\equation*>
+      <with|math-font|cal|E><around*|(|y|)>\<assign\>-<frac|1|2>W<rsub|\<alpha\>\<beta\>>y<rsup|\<alpha\>>y<rsup|\<beta\>>-b<rsub|\<alpha\>>y<rsup|\<alpha\>>+<big|sum><rsub|\<alpha\>><big|int><rsup|y<rsup|\<alpha\>>>f<rsup|-1><around*|(|y<rsup|\<alpha\>>|)>\<mathd\>y<rsup|\<alpha\>>.
+    </equation*>
+
+    Then <math|<with|math-font|cal|E><around*|(|y<around*|(|x<around*|(|t+\<mathd\>t|)>|)>|)>-<with|math-font|cal|E><around*|(|y<around*|(|x<around*|(|t|)>|)>|)>\<leqslant\>0>.
+  </lemma>
+
+  <\proof>
+    The dynamics of <math|a<rsup|\<alpha\>>> is
+
+    <\align>
+      <tformat|<table|<row|<cell|\<tau\><frac|\<mathd\>a<rsup|\<alpha\>>|\<mathd\>t>>|<cell|=\<tau\>W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+      <frac|\<mathd\>x<rsup|\<beta\>>|\<mathd\>t>>>|<row|<cell|>|<cell|=W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>><around*|[|-x<rsup|\<beta\>><around*|(|t|)>+f<around*|(|a<rsup|\<beta\>>|)>|]>>>|<row|<cell|>|<cell|=-<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>x<rsup|\<beta\>><around*|(|t|)>+b<rsup|\<alpha\>>|)>+b<rsup|\<alpha\>>+W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>y<rsup|\<beta\>>>>|<row|<cell|>|<cell|=W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>y<rsup|\<beta\>>+b<rsup|\<alpha\>>-a<rsup|\<alpha\>>.>>>>
+    </align>
+
+    Since <math|W> is symmetric, we have <math|\<partial\><with|math-font|cal|E>/\<partial\>y<rsup|\<alpha\>>=-W<rsub|\<alpha\>\<beta\>>y<rsup|\<beta\>>-b<rsub|\<alpha\>>+f<rsup|-1><around*|(|y<rsub|\<alpha\>>|)>>.
+    Then
+
+    <\align>
+      <tformat|<table|<row|<cell|<frac|\<mathd\><with|math-font|cal|E>|\<mathd\>t>>|<cell|=<frac|\<mathd\>y<rsup|\<alpha\>>|\<mathd\>t><around*|(|-W<rsub|\<alpha\>\<beta\>>y<rsup|\<beta\>>-b<rsub|\<alpha\>>+f<rsup|-1><around*|(|y<rsub|\<alpha\>>|)>|)>>>|<row|<cell|>|<cell|=<frac|\<mathd\>y<rsup|\<alpha\>>|\<mathd\>t><around*|(|-W<rsub|\<alpha\>\<beta\>>y<rsup|\<beta\>>-b<rsub|\<alpha\>>+a<rsub|\<alpha\>>|)>>>|<row|<cell|>|<cell|=-<frac|\<mathd\>y<rsup|\<alpha\>>|\<mathd\>t><around*|(|W<rsub|\<alpha\>\<beta\>>y<rsup|\<beta\>>+b<rsub|\<alpha\>>-a<rsub|\<alpha\>>|)>>>>>
+    </align>
+
+    Notice that, the second term of rhs is exactly the dynamics of
+    <math|a<rsub|\<alpha\>>>, then
+
+    <\align>
+      <tformat|<table|<row|<cell|<frac|\<mathd\><with|math-font|cal|E>|\<mathd\>t>>|<cell|=-\<tau\><frac|\<mathd\>y<rsup|\<alpha\>>|\<mathd\>t><frac|\<mathd\>a<rsub|\<alpha\>>|\<mathd\>t>>>|<row|<cell|>|<cell|=-\<tau\><frac|\<mathd\>y<rsup|\<alpha\>>|\<mathd\>a<rsup|\<alpha\>>><around*|(|<frac|\<mathd\>a<rsup|\<alpha\>>|\<mathd\>t><frac|\<mathd\>a<rsub|\<alpha\>>|\<mathd\>t>|)>>>|<row|<cell|>|<cell|=-\<tau\>f<rprime|'><around*|(|a<rsup|\<alpha\>>|)><around*|(|<frac|\<mathd\>a<rsup|\<alpha\>>|\<mathd\>t><frac|\<mathd\>a<rsub|\<alpha\>>|\<mathd\>t>|)>.>>>>
+    </align>
+
+    Since <math|f> is increasing and <math|\<tau\>\<gtr\>0>,
+    <math|\<mathd\><with|math-font|cal|E>/\<mathd\>t\<leqslant\>0>.
   </proof>
 
   <\remark>
-    This is the continuum analogy to the convergence of Hopfield network.
-    Indeed, let <math|M> be <math|\<bbb-R\><rsup|N>>, and
-    <math|<with|math-font|cal|E><around*|(|x|)>=-W<rsub|\<alpha\> \<beta\>>
-    x<rsup|\<alpha\>> x<rsup|\<beta\>>> with <math|W<rsub|\<alpha\>
-    \<beta\>>=W<rsub|\<beta\> \<alpha\>>>, then dynamics becomes
-
-    <\equation*>
-      <frac|d x<rsub|\<alpha\>>|d t><around*|(|t|)>=-\<nabla\><rsub|\<alpha\>><with|math-font|cal|E><around*|(|x<around*|(|t|)>|)>=-2
-      W<rsub|\<alpha\> \<beta\>> x<rsup|\<beta\>><around*|(|t|)>,
-    </equation*>
-
-    which makes
-
-    <\equation*>
-      <frac|d<with|math-font|cal|E>|d t><around*|(|t|)>=-2<frac|d
-      x<rsup|\<alpha\>>|d t><around*|(|t|)> W<rsub|\<alpha\> \<beta\>>
-      x<rsup|\<beta\>><around*|(|t|)>.
-    </equation*>
-
-    Comparing with the proof of convergence of Hopfield network, i.e.
-    <math|\<Delta\>E<rsub|W><around*|(|x|)>=-2 \<Delta\>x<rsup|\<alpha\>>
-    W<rsub|\<alpha\> \ \<beta\>> x<rsup|\<beta\>>>, the analogy is obvious.
-    The only differences are that the condition <math|W<rsub|\<alpha\>
-    \<alpha\>>=0> and the <math|sign>-function are absent here.
+    The condition <math|W<rsub|\<alpha\>\<alpha\>>=0> for
+    <math|\<forall\>\<alpha\>> is not essential for this lemma. Indeed, this
+    condition is absent in the proof.
   </remark>
 
-  <subsection|Energy as Neural Network>
-
-  The funciton <math|<with|math-font|cal|E>> is the energy in the Ising model
-  (as a toy Hopfield network).
-
   <\theorem>
-    Let <math|f<rsub|\<theta\>>> a neural network mapping from <math|M> to
-    <math|\<bbb-R\>>, parameterized by <math|\<theta\>>, and
-    <math|<with|math-font|cal|B>:M\<rightarrow\>D> where
-    <math|D\<subseteq\>M> being compact. Then
-
-    <\equation*>
-      <with|math-font|cal|E><rsub|\<theta\>>\<assign\>f<rsub|\<theta\>>\<circ\><with|math-font|cal|B>
-    </equation*>
-
-    is a bounded function in <math|C<rsup|1><around*|(|M,\<bbb-R\>|)>>.
+    Let <math|<around*|(|x,W,b;\<tau\>,f|)>> a continous-time Hopfield
+    network. Then for <math|\<forall\>\<epsilon\>\<gtr\>0>,
+    <math|\<exists\>t<rsub|\<star\>>\<less\>+\<infty\>>, s.t.
+    <math|<around*|\<\|\|\>|\<mathd\>x/\<mathd\>t|\<\|\|\>>\<less\>\<epsilon\>>.
   </theorem>
 
-  One option of <math|<with|math-font|cal|B>> is <math|tanh>-function.
-  However, the <math|tanh<around*|(|x|)>> will be saterated as
-  <math|x\<rightarrow\>\<pm\>\<infty\>>. A better option is <slanted|boundary
-  reflection>. Define boundary reflection map
-
-  <\align>
-    <tformat|<table|<row|<cell|f<rsub|BR>>|<cell|:\<bbb-R\>\<rightarrow\><around*|[|0,1|]>>>|<row|<cell|f<rsub|BR><around*|(|x|)>>|<cell|=<choice|<tformat|<table|<row|<cell|x,x\<in\><around*|[|0,1|]>>>|<row|<cell|-x,x\<in\><around*|[|-1,0|]>>>|<row|<cell|f<rsub|BR><around*|(|x-2|)>,x\<gtr\>1>>|<row|<cell|f<rsub|BR><around*|(|x+2|)>,x\<less\>-1>>>>>.>>>>
-  </align>
-
-  This function has constant gradient <math|\<pm\>1>, thus no saturation. It
-  has periodic symmetry.
+  <\proof>
+    The function <math|E\<assign\><with|math-font|cal|E>\<circ\>y> is lower
+    bounded since <math|y>, i.e. function
+    <math|f:\<bbb-R\>\<rightarrow\><around*|[|-1,1|]>>, is bounded. This
+    <math|E> is a Lyapunov function for the continous-time Hopfield network.
+  </proof>
 </body>
 
 <initial|<\collection>
@@ -254,11 +286,13 @@
   <\collection>
     <associate|adjoint method|<tuple|1|1>>
     <associate|auto-1|<tuple|1|1>>
-    <associate|auto-2|<tuple|2|2>>
-    <associate|auto-3|<tuple|2.1|2>>
-    <associate|auto-4|<tuple|2.2|2>>
-    <associate|auto-5|<tuple|2.3|3>>
-    <associate|hopfield dynamics|<tuple|3|3>>
+    <associate|auto-2|<tuple|1.1|2>>
+    <associate|auto-3|<tuple|2|2>>
+    <associate|auto-4|<tuple|2.1|2>>
+    <associate|auto-5|<tuple|2.2|3>>
+    <associate|auto-6|<tuple|2.3|?>>
+    <associate|auto-7|<tuple|2.4|?>>
+    <associate|hopfield dynamics|<tuple|10|3>>
   </collection>
 </references>
 
