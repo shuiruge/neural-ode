@@ -186,8 +186,7 @@
 
     Let <math|t\<in\>\<bbb-N\>> and <math|x\<in\><around*|[|-1,+1|]><rsup|d>>,
     <math|W\<in\>\<bbb-R\><rsup|d>\<times\>\<bbb-R\><rsup|d>> with
-    <math|W<rsub|\<alpha\> \<beta\>>=W<rsub|\<beta\> \<alpha\>>> and
-    <math|W<rsub|\<alpha\> \<alpha\>>=0>, and
+    <math|W<rsub|\<alpha\> \<beta\>>=W<rsub|\<beta\> \<alpha\>>>, and
     <math|b\<in\>\<bbb-R\><rsup|d>>. Define dynamics
 
     <\equation*>
@@ -261,7 +260,13 @@
   <\remark>
     The condition <math|W<rsub|\<alpha\>\<alpha\>>=0> for
     <math|\<forall\>\<alpha\>> is not essential for this lemma. Indeed, this
-    condition is absent in the proof.
+    condition is absent in the proof. This differs from the case of
+    discrete-time.<\footnote>
+      With experiments, we find that adding condition
+      <math|W<rsub|\<alpha\>\<alpha\>>=0> for <math|\<forall\>\<alpha\>>
+      significantly restricts the capacity of Hopfield network for learning,
+      as well as its robustness.
+    </footnote>
   </remark>
 
   <\theorem>
@@ -277,6 +282,59 @@
     <math|f:\<bbb-R\>\<rightarrow\><around*|[|-1,1|]>>, is bounded. This
     <math|E> is a Lyapunov function for the continous-time Hopfield network.
   </proof>
+
+  <\corollary>
+    Let <math|<around*|(|x,W,b;\<tau\>,f|)>> a continous-time Hopfield
+    network. And <math|D\<assign\><around*|{|x<rsub|n>\|x<rsub|n>\<in\>\<bbb-R\><rsup|d>,n=1,\<ldots\>,N|}>>
+    a dataset<\footnote>
+      We use Greek alphabet for component in <math|\<bbb-R\><rsup|d>> and
+      Lattin alphabet for element in dataset.
+    </footnote>. We can train the Hopfield nework by seeking a proper
+    parameters <math|<around*|(|W,b|)>>, s.t. its stable point covers the
+    dataset as much as possible, by
+
+    <\algorithm>
+      Given <math|1\<gtr\>\<Delta\>t\<gtr\>0>, and regularizer <math|R>,
+
+      for step = 0,<text-dots>,S:
+
+      <space|1em>for <math|x<rsub|n>\<in\>D>:
+
+      <space|2em><math|y<around*|(|W,b|)>\<assign\>x<around*|(|t<rsub|0>+\<Delta\>t;W,b|)>>
+      by solving the ODE of Hopfield network with IV
+      <math|x<around*|(|t<rsub|0>|)>\<assign\>x<rsub|n>>
+
+      <space|2em><math|loss<around*|(|W,b|)>\<assign\><around*|\<\|\|\>|y<around*|(|W,b|)>-x<rsub|n>|\<\|\|\>>+R<around*|(|W,b|)>>
+
+      <space|2em>update <math|<around*|(|W,b|)>> by minimizing <math|loss>
+      via gradient descent method.
+    </algorithm>
+  </corollary>
+
+  <\proof>
+    The model learns nothing with this algorithm if and only if the dynamics
+    becomes identity transform. That is, for an arbitrary sample
+    <math|x\<in\><around*|{|-1,1|}><rsup|d>>, when
+    <math|x<rsup|\<alpha\>>=1>, <math|f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+    x<rsup|\<beta\>>+b<rsup|\<alpha\>>|)>=1>; and when
+    <math|x<rsup|\<alpha\>>=-1>, <math|f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+    x<rsup|\<beta\>>+b<rsup|\<alpha\>>|)>=-1>. This can only be held when
+    <math|<around*|\||W<rsub|\<alpha\>\<alpha\>>|\|>\<gg\><around*|\||W<rsub|\<alpha\>\<beta\>>|\|>>
+    and <math|<around*|\||W<rsub|\<alpha\>\<alpha\>>|\|>\<gg\>b<rsub|\<alpha\>>>
+    for <math|\<forall\>\<alpha\>> and <math|\<forall\>\<beta\>\<neq\>\<alpha\>>.
+    Indeed,
+
+    <\equation*>
+      x<rsup|\<alpha\>>=1\<Rightarrow\>f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+      x<rsup|\<beta\>>+b<rsup|\<alpha\>>|)>\<approx\>f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<alpha\>>
+      x<rsup|\<alpha\>>|)>\<approx\>1;
+    </equation*>
+
+    and the same holds for <math|x<rsup|\<alpha\>>=-1>. With a proper
+    weight-initializer and regularizer, this will never happen. So, with this
+    algorithm, Hopfield network can memorize the samples, s.t. its stable
+    point covers the dataset as much as possible.
+  </proof>
 </body>
 
 <initial|<\collection>
@@ -290,33 +348,34 @@
     <associate|auto-3|<tuple|2|2>>
     <associate|auto-4|<tuple|2.1|2>>
     <associate|auto-5|<tuple|2.2|3>>
-    <associate|auto-6|<tuple|2.3|?>>
-    <associate|auto-7|<tuple|2.4|?>>
-    <associate|hopfield dynamics|<tuple|10|3>>
+    <associate|footnote-1|<tuple|1|?>>
+    <associate|footnote-2|<tuple|2|?>>
+    <associate|footnr-1|<tuple|1|?>>
+    <associate|footnr-2|<tuple|2|?>>
   </collection>
 </references>
 
 <\auxiliary>
   <\collection>
     <\associate|toc>
-      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|1<space|2spc>Adjoint
-      Method> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|1<space|2spc>Neural
+      ODE> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-1><vspace|0.5fn>
 
-      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|2<space|2spc>Continuous-time
-      Hopfield Network> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-2><vspace|0.5fn>
+      <with|par-left|<quote|1tab>|1.1<space|2spc>Adjoint Method
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-2>>
+
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|2<space|2spc>Hopfield
+      Network> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-3><vspace|0.5fn>
 
       <with|par-left|<quote|1tab>|2.1<space|2spc>Discrete-time Hopfield
       Network <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-3>>
-
-      <with|par-left|<quote|1tab>|2.2<space|2spc>Continuum of Time
-      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-4>>
 
-      <with|par-left|<quote|1tab>|2.3<space|2spc>Energy as Neural Network
-      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <with|par-left|<quote|1tab>|2.2<space|2spc>Continuous-time Hopfield
+      Network <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-5>>
     </associate>
   </collection>
