@@ -28,7 +28,7 @@ def kernel_constraint(kernel):
     The shape and dtype as the input.
   """
   w = (kernel + tf.transpose(kernel)) / 2
-  w = tf.linalg.set_diag(w, tf.zeros(kernel.shape[0:-1]))
+  # w = tf.linalg.set_diag(w, tf.zeros(kernel.shape[0:-1]))  # TODO
   return w
 
 

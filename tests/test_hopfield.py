@@ -12,13 +12,13 @@ tf.keras.backend.clear_session()
 
 
 IMAGE_SIZE = (16, 16)
-MEMORY_SIZE = 50
-FLIP_RATIO = 0.2
+MEMORY_SIZE = 500
+FLIP_RATIO = 0.1
 IS_BENCHMARK = False
 USE_HEBB_RULE_INITIALIZER = False
 IS_CONTINUOUS_TIME = True
-# DATA_QUANTIZE_METHOD = 'binary'
-DATA_QUANTIZE_METHOD = 'four-piece'
+DATA_QUANTIZE_METHOD = 'binary'
+# DATA_QUANTIZE_METHOD = 'four-piece'
 # LOSS = 'mae'
 LOSS = 'binary_crossentropy'
 EPOCHS = 500
