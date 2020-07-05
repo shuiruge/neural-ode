@@ -113,21 +113,19 @@ class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
     Maps onto [-1, 1].
   relax_tol : float, optional
     Tolerance for relaxition.
-  zero_diag : bool, optional
-    If `True`, then the weight-matrix has vanishing diagonal.
   """
 
   def __init__(self, units,
                activation='tanh',
                relax_tol=1e-2,
-               zero_diag=False,
                name='DiscreteTimeHopfieldLayer',
                **kwargs):
     super().__init__(name=name, **kwargs)
     self.relax_tol = tf.convert_to_tensor(relax_tol)
 
+    kernel_constraint = get_kernel_constraint(zero_diag=True)
     self._dense = tf.keras.layers.Dense(
-      units, activation, kernel_constraint=get_kernel_constraint(zero_diag))
+      units, activation, kernel_constraint=kernel_constraint)
 
   def call(self, x, training=None):
     if training:
@@ -250,8 +248,6 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
     Maximum value of time that trigers the stopping condition.
   relax_tol : float, optional
     Tolerance for relaxition.
-  zero_diag : bool, optional
-    If `True`, then the weight-matrix has vanishing diagonal.
   """
 
   def __init__(self, units,
@@ -264,14 +260,14 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
                training_time=1e-1,
                max_time=1e+3,
                relax_tol=1e-2,
-               zero_diag=False,
                name='ContinuousTimeHopfieldLayer',
                **kwargs):
     super().__init__(name=name, **kwargs)
     self.training_time = tf.convert_to_tensor(training_time)
 
+    kernel_constraint = get_kernel_constraint(zero_diag=False)
     self._dense = tf.keras.layers.Dense(
-      units, activation, kernel_constraint=get_kernel_constraint(zero_diag))
+      units, activation, kernel_constraint=kernel_constraint)
 
     def pvf(_, x):
       """C.f. section 42.6 of ref [1]_."""
