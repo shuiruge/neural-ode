@@ -13,23 +13,38 @@ from node.solvers.runge_kutta import RKF56Solver
 from node.solvers.dynamical_runge_kutta import DynamicalRKF56Solver
 
 
-@tf.function
-def kernel_constraint(kernel):
-  """Symmetric kernel with vanishing diagonal.
+def get_kernel_constaint(zero_diag):
+  """Symmetric kernel with vanishing diagonal (if `zero_diag` is `True`).
 
   Parameters
   ----------
-  kernel : tensor
-    Shape (N, N) for a positive integer N.
+  zero_diag : bool
 
   Returns
   -------
-  tensor
-    The shape and dtype as the input.
+  callable
+    The `kernel_constaint` argument of `tf.keras.layers.Dense`.
   """
-  w = (kernel + tf.transpose(kernel)) / 2
-  # w = tf.linalg.set_diag(w, tf.zeros(kernel.shape[0:-1]))  # TODO
-  return w
+
+  @tf.function
+  def kernel_constraint(kernel):
+    """
+    Parameters
+    ----------
+    kernel : tensor
+      Shape (N, N) for a positive integer N.
+
+    Returns
+    -------
+    tensor
+      The shape and dtype as the input.
+    """
+    w = (kernel + tf.transpose(kernel)) / 2
+    if zero_diag:
+      w = tf.linalg.set_diag(w, tf.zeros(kernel.shape[0:-1]))
+    return w
+
+  return kernel_constraint
 
 
 class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
@@ -98,18 +113,21 @@ class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
     Maps onto [-1, 1].
   relax_tol : float, optional
     Tolerance for relaxition.
+  zero_diag : bool, optional
+    If `True`, then the weight-matrix has vanishing diagonal.
   """
 
   def __init__(self, units,
                activation='tanh',
                relax_tol=1e-2,
+               zero_diag=False,
                name='DiscreteTimeHopfieldLayer',
                **kwargs):
     super().__init__(name=name, **kwargs)
     self.relax_tol = tf.convert_to_tensor(relax_tol)
 
     self._dense = tf.keras.layers.Dense(
-      units, activation, kernel_constraint=kernel_constraint)
+      units, activation, kernel_constraint=get_kernel_constraint(zero_diag))
 
   def call(self, x, training=None):
     if training:
@@ -230,8 +248,10 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
     Integration time for training state.
   max_time : float, optional
     Maximum value of time that trigers the stopping condition.
-  relax_tol: float, optional
+  relax_tol : float, optional
     Tolerance for relaxition.
+  zero_diag : bool, optional
+    If `True`, then the weight-matrix has vanishing diagonal.
   """
 
   def __init__(self, units,
@@ -244,13 +264,14 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
                training_time=1e-1,
                max_time=1e+3,
                relax_tol=1e-2,
+               zero_diag=False,
                name='ContinuousTimeHopfieldLayer',
                **kwargs):
     super().__init__(name=name, **kwargs)
     self.training_time = tf.convert_to_tensor(training_time)
 
     self._dense = tf.keras.layers.Dense(
-      units, activation, kernel_constraint=kernel_constraint)
+      units, activation, kernel_constraint=get_kernel_constraint(zero_diag))
 
     def pvf(_, x):
       """C.f. section 42.6 of ref [1]_."""
