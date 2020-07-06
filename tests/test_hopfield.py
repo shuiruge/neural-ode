@@ -1,7 +1,8 @@
 import numpy as np
 import tensorflow as tf
-from node.hopfield import DiscreteTimeHopfieldLayer, ContinuousTimeHopfieldLayer
 
+from node.hopfield import (ContinuousTimeHopfieldLayer,
+                           DiscreteTimeHopfieldLayer)
 
 # for reproducibility
 SEED = 42
@@ -12,8 +13,8 @@ tf.keras.backend.clear_session()
 
 
 IMAGE_SIZE = (16, 16)
-MEMORY_SIZE = 500
-FLIP_RATIO = 0.1
+MEMORY_SIZE = 50
+FLIP_RATIO = 0.3
 IS_BENCHMARK = False
 USE_HEBB_RULE_INITIALIZER = False
 IS_CONTINUOUS_TIME = True

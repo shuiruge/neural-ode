@@ -8,12 +8,13 @@ References
 """
 
 import tensorflow as tf
-from node.core import get_node_function, get_dynamical_node_function
-from node.solvers.runge_kutta import RKF56Solver
+
+from node.core import get_dynamical_node_function, get_node_function
 from node.solvers.dynamical_runge_kutta import DynamicalRKF56Solver
+from node.solvers.runge_kutta import RKF56Solver
 
 
-def get_kernel_constaint(zero_diag):
+def get_kernel_constraint(zero_diag):
   """Symmetric kernel with vanishing diagonal (if `zero_diag` is `True`).
 
   Parameters
@@ -177,6 +178,12 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
   r"""Implements the extension of algorithm 42.9 of ref [1]_, for the
   continuous-time case.
 
+  Notes
+  -----
+  Argument `zero_diag` is default to `False`. When setting it `True`, weight-
+  regularization shall be added, so as to avoid learning an identity transform,
+  which has been observed in experiments when weight-regularization is absent.
+
   References
   ----------
   .. [1] D. Mackay, "Information Theory, Inference, and Learning Algorithms".
@@ -248,6 +255,7 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
     Maximum value of time that trigers the stopping condition.
   relax_tol : float, optional
     Tolerance for relaxition.
+  zero_diag : bool, optional
   """
 
   def __init__(self, units,
@@ -260,12 +268,13 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
                training_time=1e-1,
                max_time=1e+3,
                relax_tol=1e-2,
+               zero_diag=False,
                name='ContinuousTimeHopfieldLayer',
                **kwargs):
     super().__init__(name=name, **kwargs)
     self.training_time = tf.convert_to_tensor(training_time)
 
-    kernel_constraint = get_kernel_constraint(zero_diag=False)
+    kernel_constraint = get_kernel_constraint(zero_diag=zero_diag)
     self._dense = tf.keras.layers.Dense(
       units, activation, kernel_constraint=kernel_constraint)
 
