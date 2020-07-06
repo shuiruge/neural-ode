@@ -180,7 +180,7 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
 
   Notes
   -----
-  Argument `zero_diag` is default to `False`. When setting it `True`, weight-
+  Argument `zero_diag` is default to `True`. When setting it `False`, weight-
   regularization shall be added, so as to avoid learning an identity transform,
   which has been observed in experiments when weight-regularization is absent.
 
@@ -268,7 +268,7 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
                training_time=1e-1,
                max_time=1e+3,
                relax_tol=1e-2,
-               zero_diag=False,
+               zero_diag=True,
                name='ContinuousTimeHopfieldLayer',
                **kwargs):
     super().__init__(name=name, **kwargs)

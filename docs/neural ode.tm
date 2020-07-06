@@ -289,9 +289,15 @@
     a dataset<\footnote>
       We use Greek alphabet for component in <math|\<bbb-R\><rsup|d>> and
       Lattin alphabet for element in dataset.
-    </footnote>. We can train the Hopfield nework by seeking a proper
-    parameters <math|<around*|(|W,b|)>>, s.t. its stable point covers the
-    dataset as much as possible, by
+    </footnote>. If add constraint <math|W<rsub|\<alpha\>\<alpha\>>=0> for
+    <math|\<forall\>\<alpha\>>, then we can train the Hopfield nework by
+    seeking a proper parameters <math|<around*|(|W,b|)>>, s.t. its stable
+    point covers the dataset as much as possible, by<\footnote>
+      This algorithm generalizes the algorithm 42.9 of Mackay. Directly using
+      <math|y<rsup|\<alpha\>><around*|(|W,b|)>\<assign\>f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+      x<rsup|\<beta\>>+b<rsup|\<alpha\>>|)>> instead performs significantly
+      worse than this approach. <todo|Why?>
+    </footnote>
 
     <\algorithm>
       Given <math|1\<gtr\>\<Delta\>t\<gtr\>0>, and regularizer <math|R>,
@@ -304,7 +310,7 @@
       by solving the ODE of Hopfield network with IV
       <math|x<around*|(|t<rsub|0>|)>\<assign\>x<rsub|n>>
 
-      <space|2em><math|loss<around*|(|W,b|)>\<assign\><around*|\<\|\|\>|y<around*|(|W,b|)>-x<rsub|n>|\<\|\|\>>+R<around*|(|W,b|)>>
+      <space|2em><math|loss<around*|(|W,b|)>\<assign\><around*|\<\|\|\>|y<around*|(|W,b|)>-x<rsub|n>|\<\|\|\>>>
 
       <space|2em>update <math|<around*|(|W,b|)>> by minimizing <math|loss>
       via gradient descent method.
@@ -312,28 +318,21 @@
   </corollary>
 
   <\proof>
-    The model learns nothing with this algorithm if and only if the dynamics
-    becomes identity transform. That is, for an arbitrary sample
-    <math|x\<in\><around*|{|-1,1|}><rsup|d>>, when
-    <math|x<rsup|\<alpha\>>=1>, <math|f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
-    x<rsup|\<beta\>>+b<rsup|\<alpha\>>|)>=1>; and when
-    <math|x<rsup|\<alpha\>>=-1>, <math|f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
-    x<rsup|\<beta\>>+b<rsup|\<alpha\>>|)>=-1>. This can only be held when
-    <math|<around*|\||W<rsub|\<alpha\>\<alpha\>>|\|>\<gg\><around*|\||W<rsub|\<alpha\>\<beta\>>|\|>>
-    and <math|<around*|\||W<rsub|\<alpha\>\<alpha\>>|\|>\<gg\>b<rsub|\<alpha\>>>
-    for <math|\<forall\>\<alpha\>> and <math|\<forall\>\<beta\>\<neq\>\<alpha\>>.
-    Indeed,
+    For <math|\<forall\>x<rsub|n>\<in\>D>, we try to find
+    <math|<around*|(|W,b|)>>, s.t. <math|\<mathd\>x/\<mathd\>t=0> at
+    <math|x<rsub|n>>, i.e.
 
     <\equation*>
-      x<rsup|\<alpha\>>=1\<Rightarrow\>f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
-      x<rsup|\<beta\>>+b<rsup|\<alpha\>>|)>\<approx\>f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<alpha\>>
-      x<rsup|\<alpha\>>|)>\<approx\>1;
+      x<rsub|n><rsup|\<alpha\>>=f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+      x<rsub|n><rsup|\<beta\>>+b<rsup|\<alpha\>>|)>.
     </equation*>
 
-    and the same holds for <math|x<rsup|\<alpha\>>=-1>. With a proper
-    weight-initializer and regularizer, this will never happen. So, with this
-    algorithm, Hopfield network can memorize the samples, s.t. its stable
-    point covers the dataset as much as possible.
+    When <math|W<rsub|\<alpha\>\<alpha\>>=0> for <math|\<forall\>\<alpha\>>,
+    <math|f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+    x<rsup|\<beta\>>+b<rsup|\<alpha\>>|)>> thus has no information of
+    <math|x<rsup|\<alpha\>>>, it has to predict the <math|x<rsup|\<alpha\>>>
+    by the interaction between <math|x<rsup|\<alpha\>>> and the other
+    <math|x>'s components. <todo|<text-dots>>
   </proof>
 </body>
 
@@ -348,10 +347,13 @@
     <associate|auto-3|<tuple|2|2>>
     <associate|auto-4|<tuple|2.1|2>>
     <associate|auto-5|<tuple|2.2|3>>
+    <associate|auto-6|<tuple|3|?>>
     <associate|footnote-1|<tuple|1|?>>
     <associate|footnote-2|<tuple|2|?>>
+    <associate|footnote-3|<tuple|3|?>>
     <associate|footnr-1|<tuple|1|?>>
     <associate|footnr-2|<tuple|2|?>>
+    <associate|footnr-3|<tuple|3|?>>
   </collection>
 </references>
 
