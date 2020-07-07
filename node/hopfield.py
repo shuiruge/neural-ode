@@ -255,8 +255,6 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
     The tau parameter in the equation (42.17) of ref [1]_.
   static_solver : ODESolver, optional
   dynamical_solver : DynamicalODESolver
-  training_time : float, optional
-    Integration time for training state.
   max_time : float, optional
     Maximum value of time that trigers the stopping condition.
   relax_tol : float, optional
@@ -272,7 +270,6 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
                  dt=1e-1, tol=1e-3, min_dt=1e-2),
                dynamical_solver=DynamicalRKF56Solver(
                  dt=1e-1, tol=1e-3, min_dt=1e-2),
-               training_time=1e-1,
                max_time=1e+3,
                relax_tol=1e-2,
                reg_factor=0,
@@ -280,7 +277,6 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
                name='ContinuousTimeHopfieldLayer',
                **kwargs):
     super().__init__(name=name, **kwargs)
-    self.training_time = tf.convert_to_tensor(training_time)
     self.reg_factor = reg_factor
 
     kernel_constraint = get_kernel_constraint(zero_diag=zero_diag)
@@ -300,7 +296,7 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
   def call(self, x, training=None):
     t0 = tf.constant(0.)
     if training:
-      y = self.static_node_fn(t0, self.training_time, x)
+      y = self._dense(x)
       if self.reg_factor:
         loss = tf.reduce_mean(tf.abs(y - x))
         self.add_loss(self.reg_factor * loss, inputs=True)

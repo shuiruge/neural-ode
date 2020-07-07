@@ -293,27 +293,23 @@
     <math|\<forall\>\<alpha\>>, then we can train the Hopfield nework by
     seeking a proper parameters <math|<around*|(|W,b|)>>, s.t. its stable
     point covers the dataset as much as possible, by<\footnote>
-      This algorithm generalizes the algorithm 42.9 of Mackay. Directly using
-      <math|y<rsup|\<alpha\>><around*|(|W,b|)>\<assign\>f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
-      x<rsup|\<beta\>>+b<rsup|\<alpha\>>|)>> instead performs significantly
-      worse than this approach. <todo|Why?>
+      This algorithm generalizes the algorithm 42.9 of Mackay.
     </footnote>
 
     <\algorithm>
-      Given <math|1\<gtr\>\<Delta\>t\<gtr\>0>, and regularizer <math|R>,
+      <\python-code>
+        W, b = init_W, init_b
 
-      for step = 0,<text-dots>,S:
+        for step in range(max_step):
 
-      <space|1em>for <math|x<rsub|n>\<in\>D>:
+        \ \ \ \ for x in dataset:
 
-      <space|2em><math|y<around*|(|W,b|)>\<assign\>x<around*|(|t<rsub|0>+\<Delta\>t;W,b|)>>
-      by solving the ODE of Hopfield network with IV
-      <math|x<around*|(|t<rsub|0>|)>\<assign\>x<rsub|n>>
+        \ \ \ \ \ \ \ \ y = f(W @ x + b)
 
-      <space|2em><math|loss<around*|(|W,b|)>\<assign\><around*|\<\|\|\>|y<around*|(|W,b|)>-x<rsub|n>|\<\|\|\>>>
+        \ \ \ \ \ \ \ \ loss = norm(x - y)
 
-      <space|2em>update <math|<around*|(|W,b|)>> by minimizing <math|loss>
-      via gradient descent method.
+        \ \ \ \ \ \ \ \ optimizer.minimize(objective=loss, variables=(W, b))
+      </python-code>
     </algorithm>
   </corollary>
 
@@ -332,8 +328,36 @@
     x<rsup|\<beta\>>+b<rsup|\<alpha\>>|)>> thus has no information of
     <math|x<rsup|\<alpha\>>>, it has to predict the <math|x<rsup|\<alpha\>>>
     by the interaction between <math|x<rsup|\<alpha\>>> and the other
-    <math|x>'s components. <todo|<text-dots>>
+    <math|x>'s components.
   </proof>
+
+  <\remark>
+    This algorithm is equivalent to
+
+    <\algorithm>
+      <\python-code>
+        dt = ... \ # e.g. 0.1
+
+        W, b = init_W, init_b
+
+        for step in range(max_step):
+
+        \ \ \ \ for x in dataset:
+
+        \ \ \ \ \ \ \ \ y = ode_solve(f=lambda t, x: f(W @ x + b), t0=0,
+        t1=dt, x0=x)
+
+        \ \ \ \ \ \ \ \ loss = norm(x - y)
+
+        \ \ \ \ \ \ \ \ optimizer.minimize(objective=loss, variables=(W, b))
+
+        \ \ \ \ \ \ \ \ W = set_zero_diag(symmetrize(W))
+      </python-code>
+    </algorithm>
+
+    Indeed, trying to reach <math|y=x> within a small interval will force
+    <math|x> to be a fixed point.
+  </remark>
 </body>
 
 <initial|<\collection>
@@ -347,7 +371,6 @@
     <associate|auto-3|<tuple|2|2>>
     <associate|auto-4|<tuple|2.1|2>>
     <associate|auto-5|<tuple|2.2|3>>
-    <associate|auto-6|<tuple|3|?>>
     <associate|footnote-1|<tuple|1|?>>
     <associate|footnote-2|<tuple|2|?>>
     <associate|footnote-3|<tuple|3|?>>
