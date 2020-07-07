@@ -114,15 +114,18 @@ class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
     Maps onto [-1, 1].
   relax_tol : float, optional
     Tolerance for relaxition.
+  reg_factor: float, optional
   """
 
   def __init__(self, units,
                activation='tanh',
                relax_tol=1e-2,
+               reg_factor=0,
                name='DiscreteTimeHopfieldLayer',
                **kwargs):
     super().__init__(name=name, **kwargs)
     self.relax_tol = tf.convert_to_tensor(relax_tol)
+    self.reg_factor = reg_factor
 
     kernel_constraint = get_kernel_constraint(zero_diag=True)
     self._dense = tf.keras.layers.Dense(
@@ -131,6 +134,9 @@ class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
   def call(self, x, training=None):
     if training:
       y = self._dense(x)
+      if self.reg_factor:
+        loss = tf.reduce_mean(tf.abs(y - x))
+        self.add_loss(self.reg_factor * loss, inputs=True)
     else:
       new_x = self._dense(x)
       while tf.reduce_max(tf.abs(new_x - x)) > self.relax_tol:
@@ -255,6 +261,7 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
     Maximum value of time that trigers the stopping condition.
   relax_tol : float, optional
     Tolerance for relaxition.
+  reg_factor: float, optional
   zero_diag : bool, optional
   """
 
@@ -268,11 +275,13 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
                training_time=1e-1,
                max_time=1e+3,
                relax_tol=1e-2,
+               reg_factor=0,
                zero_diag=True,
                name='ContinuousTimeHopfieldLayer',
                **kwargs):
     super().__init__(name=name, **kwargs)
     self.training_time = tf.convert_to_tensor(training_time)
+    self.reg_factor = reg_factor
 
     kernel_constraint = get_kernel_constraint(zero_diag=zero_diag)
     self._dense = tf.keras.layers.Dense(
@@ -292,6 +301,9 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
     t0 = tf.constant(0.)
     if training:
       y = self.static_node_fn(t0, self.training_time, x)
+      if self.reg_factor:
+        loss = tf.reduce_mean(tf.abs(y - x))
+        self.add_loss(self.reg_factor * loss, inputs=True)
     else:
       y = self.dynamical_node_fn(t0, x)
     return y
