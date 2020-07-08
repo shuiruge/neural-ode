@@ -134,15 +134,16 @@ class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
   def call(self, x, training=None):
     if training:
       y = self._dense(x)
-      if self.reg_factor:
-        loss = tf.reduce_mean(tf.abs(y - x))
-        self.add_loss(self.reg_factor * loss, inputs=True)
     else:
       new_x = self._dense(x)
       while tf.reduce_max(tf.abs(new_x - x)) > self.relax_tol:
         x = new_x
         new_x = self._dense(x)
       y = new_x
+
+    loss = tf.reduce_mean(tf.abs(y - x))
+    self.add_loss(self.reg_factor * loss, inputs=True)
+
     return y
 
 
@@ -271,7 +272,7 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
                dynamical_solver=DynamicalRKF56Solver(
                  dt=1e-1, tol=1e-3, min_dt=1e-2),
                max_time=1e+3,
-               relax_tol=1e-2,
+               relax_tol=1e-3,
                reg_factor=0,
                zero_diag=True,
                name='ContinuousTimeHopfieldLayer',
@@ -297,9 +298,10 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
     t0 = tf.constant(0.)
     if training:
       y = self._dense(x)
-      if self.reg_factor:
-        loss = tf.reduce_mean(tf.abs(y - x))
-        self.add_loss(self.reg_factor * loss, inputs=True)
     else:
       y = self.dynamical_node_fn(t0, x)
+
+    loss = tf.reduce_mean(tf.abs(y - x))
+    self.add_loss(self.reg_factor * loss)
+
     return y
