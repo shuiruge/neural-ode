@@ -121,9 +121,8 @@ class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
                activation='tanh',
                relax_tol=1e-2,
                reg_factor=0,
-               name='DiscreteTimeHopfieldLayer',
                **kwargs):
-    super().__init__(name=name, **kwargs)
+    super().__init__(**kwargs)
     self.relax_tol = tf.convert_to_tensor(relax_tol)
     self.reg_factor = reg_factor
 
@@ -275,9 +274,8 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
                relax_tol=1e-3,
                reg_factor=0,
                zero_diag=True,
-               name='ContinuousTimeHopfieldLayer',
                **kwargs):
-    super().__init__(name=name, **kwargs)
+    super().__init__(**kwargs)
     self.reg_factor = reg_factor
 
     kernel_constraint = get_kernel_constraint(zero_diag=zero_diag)
