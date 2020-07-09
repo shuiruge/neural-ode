@@ -14,38 +14,23 @@ from node.solvers.dynamical_runge_kutta import DynamicalRKF56Solver
 from node.solvers.runge_kutta import RKF56Solver
 
 
-def get_kernel_constraint(zero_diag):
-  """Symmetric kernel with vanishing diagonal (if `zero_diag` is `True`).
+@tf.function
+def kernel_constraint(kernel):
+  """Symmetric kernel with vanishing diagonal.
 
   Parameters
   ----------
-  zero_diag : bool
+  kernel : tensor
+    Shape (N, N) for a positive integer N.
 
   Returns
   -------
-  callable
-    The `kernel_constaint` argument of `tf.keras.layers.Dense`.
+  tensor
+    The shape and dtype as the input.
   """
-
-  @tf.function
-  def kernel_constraint(kernel):
-    """
-    Parameters
-    ----------
-    kernel : tensor
-      Shape (N, N) for a positive integer N.
-
-    Returns
-    -------
-    tensor
-      The shape and dtype as the input.
-    """
-    w = (kernel + tf.transpose(kernel)) / 2
-    if zero_diag:
-      w = tf.linalg.set_diag(w, tf.zeros(kernel.shape[0:-1]))
-    return w
-
-  return kernel_constraint
+  w = (kernel + tf.transpose(kernel)) / 2
+  w = tf.linalg.set_diag(w, tf.zeros(kernel.shape[0:-1]))
+  return w
 
 
 class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
@@ -55,64 +40,12 @@ class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
   ----------
   .. [1] D. Mackay, "Information Theory, Inference, and Learning Algorithms".
 
-  Examples
-  --------
-  Basic configurations
-
-  >>> MEMORY_SIZE = 50
-  >>> IMAGE_SIZE = (16, 16)
-  >>> UNITS = 64
-  >>> FLIP_RATIO = 0.2
-
-  Prepare dataset
-
-  >>> mnist = tf.keras.datasets.mnist
-  >>> (x_train, _), _ = mnist.load_data()
-  >>> X = x_train[:MEMORY_SIZE]
-  >>> X = X / 255
-  >>> X = np.expand_dims(X, axis=-1)
-  >>> X = tf.image.resize(X, IMAGE_SIZE).numpy()
-  >>> X = np.reshape(X, [-1, IMAGE_SIZE[0] * IMAGE_SIZE[1]])
-  >>> X = X * 2 - 1
-  >>> X = np.where(X < 0, -1, 1)
-
-  Create and train a Hopfield layer
-
-  >>> hopfield_layer = DiscreteTimeHopfieldLayer(UNITS)
-  >>> # wraps the `hopfield` into a `tf.keras.Model` for training
-  >>> model = tf.keras.Sequential([
-  ... hopfield_layer,
-  ... ])
-  >>> def loss_fn(y_true, y_pred):
-  ...   rescale = lambda x: x / 2 + 0.5  # rescale from [-1, 1] to [0, 1].
-  ...   y_true = rescale(y_true)
-  ...   y_pred = rescale(y_pred)
-  ...   return tf.reduce_mean(tf.losses.binary_crossentropy(y_true, y_pred))
-  >>> optimizer = tf.optimizers.Adam(1e-3)
-  >>> model.compile(loss=loss_fn, optimizer=optimizer)
-  >>> model.fit(X, X, epochs=epochs, verbose=2)
-
-  Test the denoising effect
-
-  >>> noised_X = tf.where(tf.random.uniform(shape=X.shape) < FLIP_RATIO,
-  ...                     -X, X)
-  >>> X_star = hopfield_layer(noised_X)
-  >>> if isinstance(hopfield_layer, ContinuousTimeHopfieldLayer):
-  ...   tf.print('relaxed at:', hopfield_layer.stop_condition.relax_time)
-
-  >>> tf.print('(mean, var) of noised errors:',
-  ...          tf.nn.moments(tf.abs(noised_X - X), axes=[0, 1]))
-  >>> tf.print('(mean, var) of relaxed errors:',
-  ...          tf.nn.moments(tf.abs(X_star - X), axes=[0, 1]))
-  >>> tf.print('max of noised error:', tf.reduce_max(tf.abs(noised_X - X)))
-  >>> tf.print('max of relaxed error:', tf.reduce_max(tf.abs(X_star - X)))
-
   Parameters
   ----------
   activation : str or tensorflow_activation, optional
     Maps onto [-1, 1].
   relax_tol : float, optional
-    Tolerance for relaxition.
+    Relative tolerance for relaxition.
   reg_factor: float, optional
   """
 
@@ -128,7 +61,6 @@ class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     units = input_shape[-1]
-    kernel_constraint = get_kernel_constraint(zero_diag=True)
     self._f = tf.keras.layers.Dense(
       units, self.activation, kernel_constraint=kernel_constraint)
 
@@ -156,14 +88,16 @@ class StopCondition:
   Attributes
   ----------
   relax_time : scalar
-    The time when relax.
+    The time when relax. Being `-1` means that `self.max_time` is reached
+    before relaxing.
 
   Parameters
   ----------
   pvf : phase_vector_field
   max_time : float
+    Returns `True` when `t1 - t0 > max_time`.
   relax_tol : float
-    Tolerance for relaxition.
+    Relative tolerance for relaxition.
   """
 
   def __init__(self, pvf, max_time, relax_tol):
@@ -209,9 +143,9 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
   max_time : float, optional
     Maximum value of time that trigers the stopping condition.
   relax_tol : float, optional
-    Tolerance for relaxition.
+    Relative tolerance for relaxition.
   reg_factor: float, optional
-  zero_diag : bool, optional
+    The factor of the regularization-loss.
   """
 
   def __init__(self,
@@ -224,7 +158,6 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
                max_time=1e+3,
                relax_tol=1e-3,
                reg_factor=0,
-               zero_diag=True,
                **kwargs):
     super().__init__(**kwargs)
     self.activation = activation
@@ -234,11 +167,9 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
     self.max_time = max_time
     self.relax_tol = relax_tol
     self.reg_factor = reg_factor
-    self.zero_diag = zero_diag
 
   def build(self, input_shape):
     units = input_shape[-1]
-    kernel_constraint = get_kernel_constraint(zero_diag=self.zero_diag)
     f = tf.keras.layers.Dense(
       units, self.activation, kernel_constraint=kernel_constraint)
     pvf = lambda t, x: (-x + f(x)) / self.tau
