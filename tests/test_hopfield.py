@@ -14,14 +14,14 @@ tf.keras.backend.clear_session()
 
 IMAGE_SIZE = (32, 32)
 MEMORY_SIZE = 500
+# IMAGE_SIZE = (16, 16)
+# MEMORY_SIZE = 50
 FLIP_RATIO = 0.2
 IS_BENCHMARK = False
 USE_HEBB_RULE_INITIALIZER = False
 IS_CONTINUOUS_TIME = True
 DATA_QUANTIZE_METHOD = 'binary'
 # DATA_QUANTIZE_METHOD = 'four-piece'
-LOSS = 'mae'
-# LOSS = 'binary_crossentropy'
 EPOCHS = 500
 
 
@@ -56,7 +56,7 @@ def hebb_rule_initializer(X):
   return w, b
 
 
-def train(hopfield, x_train, loss, epochs, use_hebb_rule_initializer):
+def train(hopfield, x_train, epochs, use_hebb_rule_initializer):
   # wraps the `hopfield` into a `tf.keras.Model` for training
   model = tf.keras.Sequential([
     tf.keras.Input([x_train.shape[-1]]),
@@ -67,13 +67,9 @@ def train(hopfield, x_train, loss, epochs, use_hebb_rule_initializer):
     """Rescales x from [-1, 1] to [0, 1]."""
     return x / 2 + 0.5
 
-  def loss_fn(y_true, y_pred):
-    y_true = rescale(y_true)
-    y_pred = rescale(y_pred)
-    return tf.reduce_mean(getattr(tf.losses, loss)(y_true, y_pred))
-
   optimizer = tf.optimizers.Adam(1e-3)
-  model.compile(loss=loss_fn, optimizer=optimizer)
+  model.compile(optimizer=optimizer,
+                loss=lambda *args: tf.constant(0.))
   if use_hebb_rule_initializer:
     model.set_weights(hebb_rule_initializer(x_train))
   model.fit(x_train, x_train, epochs=epochs, verbose=2)
@@ -85,7 +81,7 @@ def show_denoising_effect(hopfield, X, flip_ratio):
                       -X, X)
   X_star = hopfield(noised_X)
   if isinstance(hopfield, ContinuousTimeHopfieldLayer):
-    tf.print('relaxed at:', hopfield.stop_condition.relax_time)
+    tf.print('relaxed at:', hopfield._stop_condition.relax_time)
 
   tf.print('(mean, var) of noised errors:',
            tf.nn.moments(tf.abs(noised_X - X), axes=[0, 1]))
@@ -97,9 +93,9 @@ def show_denoising_effect(hopfield, X, flip_ratio):
 
 def create_hopfield_layer(units, is_continuous_time):
   if is_continuous_time:
-    hopfield = ContinuousTimeHopfieldLayer(units)
+    hopfield = ContinuousTimeHopfieldLayer(reg_factor=1)
   else:
-    hopfield = DiscreteTimeHopfieldLayer(units)
+    hopfield = DiscreteTimeHopfieldLayer(reg_factor=1)
   return hopfield
 
 
@@ -110,7 +106,7 @@ x_train = process_data(x_train, IMAGE_SIZE, DATA_QUANTIZE_METHOD, MEMORY_SIZE)
 hopfield = create_hopfield_layer(IMAGE_SIZE[0] * IMAGE_SIZE[1],
                                  IS_CONTINUOUS_TIME)
 if IS_BENCHMARK:
-  train(hopfield, x_train, LOSS, 0, True)
+  train(hopfield, x_train, 0, True)
 else:
-  train(hopfield, x_train, LOSS, EPOCHS, USE_HEBB_RULE_INITIALIZER)
+  train(hopfield, x_train, EPOCHS, USE_HEBB_RULE_INITIALIZER)
 show_denoising_effect(hopfield, x_train, FLIP_RATIO)

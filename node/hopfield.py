@@ -109,7 +109,6 @@ class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
 
   Parameters
   ----------
-  units : int
   activation : str or tensorflow_activation, optional
     Maps onto [-1, 1].
   relax_tol : float, optional
@@ -117,27 +116,32 @@ class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
   reg_factor: float, optional
   """
 
-  def __init__(self, units,
+  def __init__(self,
                activation='tanh',
                relax_tol=1e-2,
                reg_factor=0,
                **kwargs):
     super().__init__(**kwargs)
+    self.activation = activation
     self.relax_tol = tf.convert_to_tensor(relax_tol)
     self.reg_factor = reg_factor
 
+  def build(self, input_shape):
+    units = input_shape[-1]
     kernel_constraint = get_kernel_constraint(zero_diag=True)
-    self._dense = tf.keras.layers.Dense(
-      units, activation, kernel_constraint=kernel_constraint)
+    self._f = tf.keras.layers.Dense(
+      units, self.activation, kernel_constraint=kernel_constraint)
+
+    super().build(input_shape)
 
   def call(self, x, training=None):
     if training:
-      y = self._dense(x)
+      y = self._f(x)
     else:
-      new_x = self._dense(x)
+      new_x = self._f(x)
       while tf.reduce_max(tf.abs(new_x - x)) > self.relax_tol:
         x = new_x
-        new_x = self._dense(x)
+        new_x = self._f(x)
       y = new_x
 
     loss = tf.reduce_mean(tf.abs(y - x))
@@ -194,61 +198,8 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
   ----------
   .. [1] D. Mackay, "Information Theory, Inference, and Learning Algorithms".
 
-  Examples
-  --------
-  Basic configurations
-
-  >>> MEMORY_SIZE = 50
-  >>> IMAGE_SIZE = (16, 16)
-  >>> UNITS = 64
-  >>> FLIP_RATIO = 0.2
-
-  Prepare dataset
-
-  >>> mnist = tf.keras.datasets.mnist
-  >>> (x_train, _), _ = mnist.load_data()
-  >>> X = x_train[:MEMORY_SIZE]
-  >>> X = X / 255
-  >>> X = np.expand_dims(X, axis=-1)
-  >>> X = tf.image.resize(X, IMAGE_SIZE).numpy()
-  >>> X = np.reshape(X, [-1, IMAGE_SIZE[0] * IMAGE_SIZE[1]])
-  >>> X = X * 2 - 1
-  >>> X = np.where(X < 0, -1, 1)
-
-  Create and train a Hopfield layer
-
-  >>> hopfield_layer = ContinuousTimeHopfieldLayer(UNITS)
-  >>> # wraps the `hopfield` into a `tf.keras.Model` for training
-  >>> model = tf.keras.Sequential([
-  ... hopfield_layer,
-  ... ])
-  >>> def loss_fn(y_true, y_pred):
-  ...   rescale = lambda x: x / 2 + 0.5  # rescale from [-1, 1] to [0, 1].
-  ...   y_true = rescale(y_true)
-  ...   y_pred = rescale(y_pred)
-  ...   return tf.reduce_mean(tf.losses.binary_crossentropy(y_true, y_pred))
-  >>> optimizer = tf.optimizers.Adam(1e-3)
-  >>> model.compile(loss=loss_fn, optimizer=optimizer)
-  >>> model.fit(X, X, epochs=epochs, verbose=2)
-
-  Test the denoising effect
-
-  >>> noised_X = tf.where(tf.random.uniform(shape=X.shape) < FLIP_RATIO,
-  ...                     -X, X)
-  >>> X_star = hopfield_layer(noised_X)
-  >>> if isinstance(hopfield_layer, ContinuousTimeHopfieldLayer):
-  ...   tf.print('relaxed at:', hopfield_layer.stop_condition.relax_time)
-
-  >>> tf.print('(mean, var) of noised errors:',
-  ...          tf.nn.moments(tf.abs(noised_X - X), axes=[0, 1]))
-  >>> tf.print('(mean, var) of relaxed errors:',
-  ...          tf.nn.moments(tf.abs(X_star - X), axes=[0, 1]))
-  >>> tf.print('max of noised error:', tf.reduce_max(tf.abs(noised_X - X)))
-  >>> tf.print('max of relaxed error:', tf.reduce_max(tf.abs(X_star - X)))
-
   Parameters
   ----------
-  units : int
   activation : str or tensorflow_activation, optional
     Maps onto [-1, 1].
   tau : float, optional
@@ -263,7 +214,7 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
   zero_diag : bool, optional
   """
 
-  def __init__(self, units,
+  def __init__(self,
                activation='tanh',
                tau=1,
                static_solver=RKF56Solver(
@@ -276,28 +227,37 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
                zero_diag=True,
                **kwargs):
     super().__init__(**kwargs)
+    self.activation = activation
+    self.tau = tau
+    self.static_solver = static_solver
+    self.dynamical_solver = dynamical_solver
+    self.max_time = max_time
+    self.relax_tol = relax_tol
     self.reg_factor = reg_factor
+    self.zero_diag = zero_diag
 
-    kernel_constraint = get_kernel_constraint(zero_diag=zero_diag)
-    self._dense = tf.keras.layers.Dense(
-      units, activation, kernel_constraint=kernel_constraint)
+  def build(self, input_shape):
+    units = input_shape[-1]
+    kernel_constraint = get_kernel_constraint(zero_diag=self.zero_diag)
+    f = tf.keras.layers.Dense(
+      units, self.activation, kernel_constraint=kernel_constraint)
+    pvf = lambda t, x: (-x + f(x)) / self.tau
+    stop_condition = StopCondition(pvf, self.max_time, self.relax_tol)
 
-    def pvf(_, x):
-      """C.f. section 42.6 of ref [1]_."""
-      return (-x + self._dense(x)) / tau
+    self._f = f
+    self._pvf = pvf
+    self._stop_condition = stop_condition
+    self._node_f = get_dynamical_node_function(
+      self.dynamical_solver, self.static_solver, pvf, stop_condition)
 
-    self.pvf = pvf
-    self.stop_condition = StopCondition(self.pvf, max_time, relax_tol)
-    self.static_node_fn = get_node_function(static_solver, self.pvf)
-    self.dynamical_node_fn = get_dynamical_node_function(
-      dynamical_solver, static_solver, self.pvf, self.stop_condition)
+    super().build(input_shape)
 
   def call(self, x, training=None):
     t0 = tf.constant(0.)
     if training:
-      y = self._dense(x)
+      y = self._f(x)
     else:
-      y = self.dynamical_node_fn(t0, x)
+      y = self._node_f(t0, x)
 
     loss = tf.reduce_mean(tf.abs(y - x))
     self.add_loss(self.reg_factor * loss)
