@@ -12,10 +12,10 @@ tf.random.set_seed(SEED)
 tf.keras.backend.clear_session()
 
 
-IMAGE_SIZE = (32, 32)
-MEMORY_SIZE = 500
-# IMAGE_SIZE = (16, 16)
-# MEMORY_SIZE = 50
+# IMAGE_SIZE = (32, 32)
+# MEMORY_SIZE = 500
+IMAGE_SIZE = (16, 16)
+MEMORY_SIZE = 50
 FLIP_RATIO = 0.2
 IS_BENCHMARK = False
 USE_HEBB_RULE_INITIALIZER = False
@@ -32,10 +32,9 @@ def pooling(X, size):
 
 
 def process_data(X, image_size, data_quantize_method, memory_size):
-  X = X / 255
   X = pooling(X, image_size)
   X = np.reshape(X, [-1, image_size[0] * image_size[1]])
-  X = X * 2 - 1
+  X = X / 255 * 2 - 1
   if data_quantize_method == 'binary':
     X = np.where(X < 0, -1, 1)
   elif data_quantize_method == 'four-piece':

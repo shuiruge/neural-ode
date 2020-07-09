@@ -118,6 +118,9 @@
       x<rsup|\<alpha\>><around*|(|t+1|)>=sign<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
       x<rsup|\<beta\>><around*|(|t|)>+b<rsup|\<alpha\>>|)>.
     </equation*>
+
+    The <math|<around*|(|x,W,b|)>> is called a discrete-time Hopfield
+    network.
   </definition>
 
   <\lemma>
@@ -176,7 +179,7 @@
     Since the states of the network are finite, the
     <math|<with|math-font|cal|E>> is lower bounded. Thus
     <math|\<exists\>t<rsub|\<star\>>\<less\>+\<infty\>>, s.t.
-    <math|x<around*|(|t+1|)>=x<around*|(|t|)>>.
+    <math|x<around*|(|t+1|)>=x<around*|(|t|)>>. <todo|limit circle?>
   </proof>
 
   <subsection|Continuous-time Hopfield Network>
@@ -184,7 +187,8 @@
   <\definition>
     [Continuous-time Hopfield Network]
 
-    Let <math|t\<in\>\<bbb-N\>> and <math|x\<in\><around*|[|-1,+1|]><rsup|d>>,
+    Let <math|t\<in\><around*|[|0,+\<infty\>|)>> and
+    <math|x\<in\><around*|[|-1,+1|]><rsup|d>>,
     <math|W\<in\>\<bbb-R\><rsup|d>\<times\>\<bbb-R\><rsup|d>> with
     <math|W<rsub|\<alpha\> \<beta\>>=W<rsub|\<beta\> \<alpha\>>>, and
     <math|b\<in\>\<bbb-R\><rsup|d>>. Define dynamics
@@ -194,9 +198,10 @@
       x<rsup|\<beta\>><around*|(|t|)>+b<rsup|\<alpha\>>|)>,
     </equation*>
 
-    where <math|\<tau\>> a constant and <math|f:\<bbb-R\>\<rightarrow\><around*|[|-1,1|]>>
-    being increasing. The <math|<around*|(|x,W,b;\<tau\>,f|)>> is called a
-    continuous-time Hopfield network.
+    where <math|\<tau\>\<in\><around*|(|0,+\<infty\>|)>> a constant and
+    <math|f:\<bbb-R\>\<rightarrow\><around*|[|-1,1|]>> being increasing. The
+    <math|<around*|(|x,W,b;\<tau\>,f|)>> is called a continuous-time Hopfield
+    network.
   </definition>
 
   <\remark>
@@ -261,12 +266,7 @@
     The condition <math|W<rsub|\<alpha\>\<alpha\>>=0> for
     <math|\<forall\>\<alpha\>> is not essential for this lemma. Indeed, this
     condition is absent in the proof. This differs from the case of
-    discrete-time.<\footnote>
-      With experiments, we find that adding condition
-      <math|W<rsub|\<alpha\>\<alpha\>>=0> for <math|\<forall\>\<alpha\>>
-      significantly restricts the capacity of Hopfield network for learning,
-      as well as its robustness.
-    </footnote>
+    discrete-time.
   </remark>
 
   <\theorem>
@@ -274,6 +274,7 @@
     network. Then for <math|\<forall\>\<epsilon\>\<gtr\>0>,
     <math|\<exists\>t<rsub|\<star\>>\<less\>+\<infty\>>, s.t.
     <math|<around*|\<\|\|\>|\<mathd\>x/\<mathd\>t|\<\|\|\>>\<less\>\<epsilon\>>.
+    <todo|limit circle, again?>
   </theorem>
 
   <\proof>
@@ -292,13 +293,13 @@
     </footnote>. If add constraint <math|W<rsub|\<alpha\>\<alpha\>>=0> for
     <math|\<forall\>\<alpha\>>, then we can train the Hopfield nework by
     seeking a proper parameters <math|<around*|(|W,b|)>>, s.t. its stable
-    point covers the dataset as much as possible, by<\footnote>
+    points cover the dataset as much as possible, by<\footnote>
       This algorithm generalizes the algorithm 42.9 of Mackay.
     </footnote>
 
     <\algorithm>
       <\python-code>
-        W, b = init_W, init_b
+        W, b = init_W, init_b \ # e.g. by Glorot initializer
 
         for step in range(max_step):
 
@@ -309,6 +310,8 @@
         \ \ \ \ \ \ \ \ loss = norm(x - y)
 
         \ \ \ \ \ \ \ \ optimizer.minimize(objective=loss, variables=(W, b))
+
+        \ \ \ \ \ \ \ \ W = set_zero_diag(symmetrize(W))
       </python-code>
     </algorithm>
   </corollary>
@@ -344,7 +347,9 @@
 
         \ \ \ \ for x in dataset:
 
-        \ \ \ \ \ \ \ \ y = ode_solve(f=lambda t, x: f(W @ x + b), t0=0,
+        \ \ \ \ \ \ \ \ # that is, compute x(dt), with x(0) = x
+
+        \ \ \ \ \ \ \ \ y = ode_solve(f=lambda t, x: -x + f(W @ x + b), t0=0,
         t1=dt, x0=x)
 
         \ \ \ \ \ \ \ \ loss = norm(x - y)
