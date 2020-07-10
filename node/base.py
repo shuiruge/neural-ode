@@ -1,6 +1,6 @@
 """Definitions"""
 
-import tensorflow as tf
+from collections import namedtuple
 
 
 class Time:
@@ -8,7 +8,7 @@ class Time:
 
 
 class PhasePoint:
-  """Type that represents `tf.Tensor` or nest structure of `tf.Tensor`."""
+  """Type that represents float tensor or nest structure of float tensor."""
 
 
 class PhaseVectorField:
@@ -34,23 +34,15 @@ class Diagnostics:
   """
 
 
-class Results:
-    """Results of ODE solver.
-
-    Parameters
-    ----------
-    time : Time
-    phase_point : PhasePoint
-    diagnostics : Diagnostics
-    """
-
-  def __init__(self, time, phase_point, diagnostics):
-    self.time = time
-    self.phase_point = phase_point
-    self.diagnostics = diagnostics
+ODEResult = namedtuple('ODEResult', 'time, phase_point')
 
 
 class ODESolver:
+  """
+  Attributes
+  ----------
+  diagnostics : Diagnostics
+  """
 
   def __call__(self, phase_vector_field):
     """
@@ -73,7 +65,7 @@ class ODESolver:
 
       Returns
       -------
-      Results
+      ODEResult
       """
       return NotImplemented
 
@@ -123,7 +115,7 @@ class DynamicalODESolver:
 
       Returns
       -------
-      Results
+      ODEResult
       """
       return NotImplemented
 

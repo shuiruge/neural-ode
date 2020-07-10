@@ -1,37 +1,57 @@
 import tensorflow as tf
-from node.base import ODESolver
+from node.base import Diagnostics, ODEResult, ODESolver
 from node.utils.nest import nest_map
 
 
-@nest_map
-def add(x, y):
-  return x + y
+def add(phase_point, other_phase_point):
+  """
+  Parameters
+  ----------
+  phase_point : PhasePoint
+  other_phase_point : PhasePoint
 
-
-def scalar_product(s, x):
+  Returns
+  -------
+  PhasePoint
+  """
 
   @nest_map
-  def product_s(x):
-    return s * x
+  def _add(tensor, other_tensor):
+    return tensor + other_tensor
 
-  return product_s(x)
+  return _add(phase_point, other_phase_point)
 
 
-@nest_map
-def neg(x):
-  return scalar_product(-1, x)
+def scalar_product(scalar, phase_point):
+  """
+  Parameters
+  ----------
+  scalar : scalar
+  phase_point : PhasePoint
+
+  Returns
+  -------
+  PhasePoint
+  """
+
+  @nest_map
+  def _scalar_product(tensor):
+    return scalar * tensor
+
+  return _scalar_product(phase_point)
 
 
 @tf.function
 def sign(x):
   r"""Like `tf.sign`, but keeps the dtype.
 
-  Args:
-    x: tf.Tensor
-      A numerical scalar.
+  Parameters
+  ----------
+  x : scalar
 
-  Returns: tf.Tensor
-    A numerical scalar with the same dtype as the `x`.
+  Returns
+  -------
+  scalar
   """
   if x > 0:
     return tf.constant(1, dtype=x.dtype)
@@ -42,7 +62,7 @@ def sign(x):
 
 
 class RungeKuttaStep:
-  r"""Computes the :math:`k`s.
+  """Computes the :math:`k`s.
 
   ```math
 
@@ -60,11 +80,12 @@ class RungeKuttaStep:
 
   C.f. Shampine (1986), eq. (2.1).
 
-  Args:
-    a: List[Optional[float]]
-      a[0] shall be `None` and others are floats.
-    b: List[List[Optional[float]]]
-      b[0] is `None` and others are lists of floats.
+  Parameters
+  ----------
+  a : list of optional of float
+    a[0] shall be `None` and others are floats.
+  b : list of optional of list of float
+    b[0] is `None` and others are lists of floats.
   """
 
   def __init__(self, a, b):
@@ -75,13 +96,16 @@ class RungeKuttaStep:
 
   def __call__(self, fn, t, x, dt):
     """
-    Args:
-      fn: PhaseVectorField
-      t: Time
-      x: PhasePoint
-      dt: Time
+    Parameters
+    ----------
+    fn : PhaseVectorField
+    t : Time
+    x : PhasePoint
+    dt : Time
 
-    Returns: tf.Tensor
+    Returns
+    -------
+    list of PhasePoint
     """
 
     @tf.function
@@ -104,8 +128,14 @@ class RungeKuttaStep:
     return runge_kutta_step(t, x, dt)
 
 
+class RungeKuttaDiagnostics(Diagnostics):
+
+  def __init__(self):
+    self.num_steps = tf.Variable(0, trainable=False)
+
+
 class RungeKuttaSolver(ODESolver):
-  r"""
+  """
 
   ```math
   Let $N$ the order of Runge-Kutta method, then
@@ -113,14 +143,20 @@ class RungeKuttaSolver(ODESolver):
   $$ x(t + dt) = x(t) + \sum_{i = 0}^{N - 1} c_i k_i(t) $$
   ```
 
-  Args:
-    a: List[Optional[float]]
-      a[0] shall be `None` and others are floats.
-    b: List[List[Optional[float]]]
-      b[0] is `None` and others are lists of floats.
-    c: List[float]
-    dt: float
-    min_dt: float
+  Attributes
+  ----------
+  diagnostics : RungeKuttaDiagnostics
+
+  Parameters
+  ----------
+  a : list of optional of float
+    a[0] shall be `None` and others are floats.
+  b : list of optional of list of float
+    b[0] is `None` and others are lists of floats.
+  c : list of float
+  dt : float
+  min_dt : float
+  dtype : string or dtype, optional
   """
 
   def __init__(self, a, b, c, dt, min_dt, dtype='float32'):
@@ -129,6 +165,8 @@ class RungeKuttaSolver(ODESolver):
     self.dt = tf.convert_to_tensor(dt, dtype=dtype)
     self.min_dt = tf.convert_to_tensor(min_dt, dtype=dtype)
     self._rk_step = RungeKuttaStep(a, b)
+
+    self.diagnostics = RungeKuttaDiagnostics()
 
   def __call__(self, fn):
 
@@ -142,13 +180,16 @@ class RungeKuttaSolver(ODESolver):
       t = t0
       x = x0
       dt = s * self.dt
+
       while s * (t1 - t) > self.min_dt:
         if tf.abs(t1 - t) < tf.abs(dt):
           dt = t1 - t
         ks = self._rk_step(fn, t, x, dt)
         x = add(x, dx(*ks))
         t = t + dt
-      return x
+        self.diagnostics.num_steps.assign_add(1)
+
+      return ODEResult(t1, x)
 
     return forward
 
@@ -176,6 +217,15 @@ def norm(x):
   return tf.reduce_max([l_inf_norm(_) for _ in flat])
 
 
+class RungeKuttaFehlbergDiagnostics:
+
+  def __init__(self):
+    self.num_steps = tf.Variable(0, trainable=False)
+    self.num_accepted = tf.Variable(0, trainable=False)
+    self.succeed = tf.Variable(True, trainable=False)
+    self.total_error = tf.Variable(0., trainable=False)
+
+
 class RungeKuttaFehlbergSolver(ODESolver):
   r"""
   ```math
@@ -188,20 +238,27 @@ class RungeKuttaFehlbergSolver(ODESolver):
 
   ```
 
-  References:
-    Numerical Analysis by Burden and Faires, section 5.5, algorithm 5.3, p297.
+  References
+  ----------
+  Numerical Analysis by Burden and Faires, section 5.5, algorithm 5.3, p297.
 
-  Args:
-    a: List[Optional[float]]
-      a[0] shall be `None` and others are floats.
-    b: List[List[Optional[float]]]
-      b[0] is `None` and others are lists of floats.
-    c: List[float]
-    e: List[float]
-    init_dt: float
-    tol: float
-    min_dt: float
-    max_dt: Optional[float]
+  Attributes
+  ----------
+  diagnostics : RungeKuttaFehlbergDiagnostics
+
+  Parameters
+  ----------
+  a : list of optional of float
+    a[0] shall be `None` and others are floats.
+  b : list of optional of list of float
+    b[0] is `None` and others are lists of floats.
+  c : list of float
+  e : list of float
+  init_dt : float
+  tol : float
+  min_dt : float
+  max_dt: optional of float
+  dtype : string or dtype, optional
   """
 
   def __init__(self, a, b, c, e, init_dt, tol, min_dt, max_dt, dtype='float32'):
@@ -216,7 +273,8 @@ class RungeKuttaFehlbergSolver(ODESolver):
     else:
       self.max_dt = tf.convert_to_tensor(max_dt, dtype=dtype)
     self._rk_step = RungeKuttaStep(a, b)
-    self._diagnostics = RungeKuttaFehlbergDiagnostics()
+
+    self.diagnostics = RungeKuttaFehlbergDiagnostics()
 
   def __call__(self, fn):
 
@@ -239,23 +297,19 @@ class RungeKuttaFehlbergSolver(ODESolver):
       x = x0
       dt = s * self.init_dt
 
-      succeed = True
-      self._diagnostics.reset()
-
       while s * (t1 - t) > self.min_dt:
-        accepted = False
-
         if tf.abs(t1 - t) < tf.abs(dt):
           dt = t1 - t
 
         ks = self._rk_step(fn, t, x, dt)
         r = error(dt, *ks)
+        self.diagnostics.total_error.assign_add(r)
 
         # if r < self.tol:  # TODO
         if r < self.tol or tf.abs(dt) <= self.min_dt:
-          accepted = True
           x = add(x, dx(*ks))
           t = t + dt
+          self.diagnostics.num_accepted.assign_add(1)
 
         delta = 0.84 * tf.pow(self.tol / r, 1 / 4)
         if delta < 0.1:
@@ -271,50 +325,13 @@ class RungeKuttaFehlbergSolver(ODESolver):
         # instead of raising an error.
         if tf.abs(dt) < self.min_dt:
           dt = s * self.min_dt
-          succeed = False
+          self.diagnostics.succeed.assign(False)
 
-        self._diagnostics.update(accepted, succeed, r)
-      return x
+        self.diagnostics.num_steps.assign_add(1)
+
+      return ODEResult(t1, x)
 
     return forward
-
-  @property
-  def diagnostics(self):
-    return self._diagnostics
-
-
-class RungeKuttaFehlbergDiagnostics:
-
-  def __init__(self):
-    self.num_steps = tf.Variable(0, trainable=False)
-    self.num_accepted = tf.Variable(0, trainable=False)
-    self.accept_ratio = tf.Variable(0., trainable=False)
-    self.succeed = tf.Variable(True, trainable=False)
-    self.total_error = tf.Variable(0., trainable=False)
-
-  def update(self, accepted, succeed, error):
-    self.num_steps.assign_add(1)
-    if accepted:
-      self.num_accepted.assign_add(1)
-    self.accept_ratio.assign(
-        tf.cast(self.num_accepted, self.accept_ratio.dtype) /
-        tf.cast(self.num_steps, self.accept_ratio.dtype))
-    if not succeed:
-      self.succeed.assign(False)
-    self.total_error.assign_add(error)
-
-  def reset(self):
-    self.num_steps.assign(0)
-    self.num_accepted.assign(0)
-    self.accept_ratio.assign(0.)
-    self.succeed.assign(True)
-    self.total_error.assign(0.)
-
-  def __repr__(self):
-    return ('num_steps: {}, num_accepted: {}, accept_ratio: {}, '
-            'succeed: {}, total_error: {}').format(
-                self.num_steps, self.num_accepted, self.accept_ratio,
-                self.succeed, self.total_error)
 
 
 class RK4Solver(RungeKuttaSolver):

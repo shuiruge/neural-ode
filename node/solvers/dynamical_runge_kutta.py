@@ -1,9 +1,9 @@
 import tensorflow as tf
-from node.base import DynamicalODESolver
+from node.base import DynamicalODESolver, ODEResult
 from node.utils.nest import nest_map
 from node.solvers.runge_kutta import (
-  add, norm, sign, RungeKuttaStep, RungeKuttaFehlbergDiagnostics,
-  RungeKuttaSolver, RungeKuttaFehlbergSolver)
+  add, norm, sign, RungeKuttaStep,  RungeKuttaDiagnostics, RungeKuttaSolver,
+  RungeKuttaFehlbergDiagnostics, RungeKuttaFehlbergSolver)
 
 
 class DynamicalRungeKuttaSolver(DynamicalODESolver):
@@ -15,14 +15,20 @@ class DynamicalRungeKuttaSolver(DynamicalODESolver):
   $$ x(t + dt) = x(t) + \sum_{i = 0}^{N - 1} c_i k_i(t) $$
   ```
 
-  Args:
-    a: List[Optional[float]]
-      a[0] shall be `None` and others are floats.
-    b: List[List[Optional[float]]]
-      b[0] is `None` and others are lists of floats.
-    c: List[float]
-    dt: float
-    min_dt: float
+  Attributes
+  ----------
+  diagnostics : RungeKuttaDiagnostics
+
+  Parameters
+  ----------
+  a : list of optional of float
+    a[0] shall be `None` and others are floats.
+  b : list of optional of list of float
+    b[0] is `None` and others are lists of floats.
+  c : list of float
+  dt : float
+  min_dt : float
+  dtype : string or dtype, optional
   """
 
   def __init__(self, a, b, c, dt, min_dt, dtype='float32'):
@@ -31,6 +37,8 @@ class DynamicalRungeKuttaSolver(DynamicalODESolver):
     self.dt = tf.convert_to_tensor(dt, dtype=dtype)
     self.min_dt = tf.convert_to_tensor(min_dt, dtype=dtype)
     self._rk_step = RungeKuttaStep(a, b)
+
+    self.diagnostics = RungeKuttaDiagnostics()
 
   def __call__(self, fn, stop_condition):
 
@@ -43,11 +51,14 @@ class DynamicalRungeKuttaSolver(DynamicalODESolver):
       t = t0
       x = x0
       dt = -self.dt if reverse else self.dt
+
       while not stop_condition(t0, x0, t, x):
         ks = self._rk_step(fn, t, x, dt)
         x = add(x, dx(*ks))
         t = t + dt
-      return (t, x)
+        self.diagnostics.num_steps.assign_add(1)
+
+      return ODEResult(t, x)
 
     return forward
 
@@ -64,20 +75,27 @@ class DynamicalRungeKuttaFehlbergSolver(DynamicalODESolver):
 
   ```
 
-  References:
-    Numerical Analysis by Burden and Faires, section 5.5, algorithm 5.3, p297.
+  Attributes
+  ----------
+  diagnostics : RungeKuttaFehlbergDiagnostics
 
-  Args:
-    a: List[Optional[float]]
-      a[0] shall be `None` and others are floats.
-    b: List[List[Optional[float]]]
-      b[0] is `None` and others are lists of floats.
-    c: List[float]
-    e: List[float]
-    init_dt: float
-    tol: float
-    min_dt: float
-    max_dt: Optional[float]
+  References
+  ----------
+  Numerical Analysis by Burden and Faires, section 5.5, algorithm 5.3, p297.
+
+  Parameters
+  ----------
+  a : list of optional of float
+    a[0] shall be `None` and others are floats.
+  b : list of optional of list of float
+    b[0] is `None` and others are lists of floats.
+  c : list of float
+  e : list of float
+  init_dt : float
+  tol : float
+  min_dt : float
+  max_dt: optional of float
+  dtype : string or dtype, optional
   """
 
   def __init__(self, a, b, c, e, init_dt, tol, min_dt, max_dt, dtype='float32'):
@@ -92,7 +110,8 @@ class DynamicalRungeKuttaFehlbergSolver(DynamicalODESolver):
     else:
       self.max_dt = tf.convert_to_tensor(max_dt, dtype=dtype)
     self._rk_step = RungeKuttaStep(a, b)
-    self._diagnostics = RungeKuttaFehlbergDiagnostics()
+
+    self.diagnostics = RungeKuttaFehlbergDiagnostics()
 
   def __call__(self, fn, stop_condition):
 
@@ -116,20 +135,16 @@ class DynamicalRungeKuttaFehlbergSolver(DynamicalODESolver):
       dt = -self.init_dt if reverse else self.init_dt
       s = sign(dt)
 
-      succeed = True
-      self._diagnostics.reset()
-
       while not stop_condition(t0, x0, t, x):
-        accepted = False
-
         ks = self._rk_step(fn, t, x, dt)
         r = error(dt, *ks)
+        self.diagnostics.total_error.assign_add(r)
 
         # if r < self.tol:  # TODO
         if r < self.tol or tf.abs(dt) <= self.min_dt:
-          accepted = True
           x = add(x, dx(*ks))
           t = t + dt
+          self.diagnostics.num_accepted.assign_add(1)
 
         delta = 0.84 * tf.pow(self.tol / r, 1 / 4)
         if delta < 0.1:
@@ -145,16 +160,13 @@ class DynamicalRungeKuttaFehlbergSolver(DynamicalODESolver):
         # instead of raising an error.
         if tf.abs(dt) < self.min_dt:
           dt = s * self.min_dt
-          succeed = False
+          self.diagnostics.succeed.assign(False)
 
-        self._diagnostics.update(accepted, succeed, r)
-      return (t, x)
+        self.diagnostics.num_steps.assign_add(1)
+
+      return ODEResult(t, x)
 
     return forward
-
-  @property
-  def diagnostics(self):
-    return self._diagnostics
 
 
 class DynamicalRK4Solver(DynamicalRungeKuttaSolver):

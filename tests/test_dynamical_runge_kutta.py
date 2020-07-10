@@ -16,8 +16,8 @@ def test_rk4_solver():
     return tf.stack([du_dt, dv_dt])
 
   @tf.function
-  def stop_condition(t, x):
-    return t > 1
+  def stop_condition(t0, x0, t1, x1):
+    return t1 > 1
 
   x0 = tf.constant([1., 1.])
   forward = solver(f, stop_condition)
@@ -33,8 +33,8 @@ def test_rk4_solver():
     return dx_dt
 
   @tf.function
-  def stop_condition(t, x):
-    return t < 0
+  def stop_condition(t0, x0, t1, x1):
+    return t1 < 0
 
   x0 = tf.constant([1.])
   forward = solver(f, stop_condition)
@@ -56,8 +56,8 @@ def test_rkf56_solver():
     return tf.stack([du_dt, dv_dt])
 
   @tf.function
-  def stop_condition(t, x):
-    return t > 1
+  def stop_condition(t0, x0, t1, x1):
+    return t1 > 1
 
   x0 = tf.constant([1., 1.])
   forward = solver(f, stop_condition)
@@ -74,8 +74,8 @@ def test_rkf56_solver():
     return dx_dt
 
   @tf.function
-  def stop_condition(t, x):
-    return t < 0
+  def stop_condition(t0, x0, t1, x1):
+    return t1 < 0
 
   x0 = tf.constant([1.])
   forward = solver(f, stop_condition)

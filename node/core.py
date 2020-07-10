@@ -4,33 +4,49 @@ import tensorflow as tf
 from node.utils.nest import nest_map
 
 
+class Backward:
+
+  def __call__(self, start_time, end_time, final_state, final_loss_gradient):
+    """
+    Parameters
+    ----------
+    start_time : Time
+    end_time : Time
+    final_state : PhasePoint
+      The $z^{\alpha}(t_N)$ in the paper. The final outputs of the
+      Neural ODE.
+    final_loss_gradient : PhasePoint
+      The $\frac{\partial L}{\partial z^{\alpha}(t_N)}$ in the paper.
+      The gradient of loss by the final output of the Neural ODE
+      (i.e. by the `final_state`).
+
+    Returns
+    -------
+    (initial_state, gradient_by_state, gradient_by_variables)
+      initial_state : PhasePoint
+      gradient_by_state : PhasePoint
+      gradient_by_variables : list of tensor
+        In the paper, they're $z(t_0)$, $\partial L / \partial z^{\alpha}(t_0)$,
+        and $\partial L / \partial \theta_i^{\alpha}$, respectively.
+    """
+    return NotImplemented
+
+
 def reverse_mode_derivative(ode_solver, network, variables):
-  r"""Implements the algorithm 1 in the paper original paper (1806.07366).
+  """Implements the algorithm 1 in the paper original paper (1806.07366).
 
-  Args:
-    ode_solver: ODESolver
-    network: PhaseVectorField
-      The $f(x, t)$ in the paper.
-    variables: List[tf.Variable]
-      The $\theta$ in the paper. In practice, it's a list of variables.
-      Thus $\theta = (\theta_1, \ldots)$,
+  Parameters
+  ----------
+  ode_solver : ODESolver
+  network : PhaseVectorField
+    The $f(x, t)$ in the paper.
+  variables: list of tf.Variable
+    The $\theta$ in the paper. In practice, it's a list of variables.
+    Thus $\theta = (\theta_1, \ldots)$,
 
-  Returns: Callable for backward propagation
-    Args:
-      start_time: Time
-      end_time: Time
-      final_state: PhasePoint
-        The $z^{\alpha}(t_N)$ in the paper. The final outputs of the
-        Neural ODE.
-      final_loss_gradient: PhasePoint
-        The $\frac{\partial L}{\partial z^{\alpha}(t_N)}$ in the paper.
-        The gradient of loss by the final output of the Neural ODE
-        (i.e. by the `final_state`).
-    Returns: Tuple[PhasePoint, PhasePoint, List[tf.Tensor]]
-      For the initial state, the gradient of loss by the initial state,
-      and the gradient of loss by the variables `variables`. In the
-      paper, they are $z(t_0)$, $\partial L / \partial z^{\alpha}(t_0)$,
-      and $\partial L / \partial \theta_i^{\alpha}$, respectively.
+  Returns
+  -------
+  Backward
   """
 
   @tf.function
@@ -60,10 +76,10 @@ def reverse_mode_derivative(ode_solver, network, variables):
     for var in variables:
       zeros = tf.zeros_like(var)
       final_phase_point.append(zeros)
-    ode_final_value = forward(end_time,
-                              start_time,
-                              final_phase_point)
-    init_state, init_loss_gradient, *grad_loss_by_vars = ode_final_value
+    ode_result = forward(end_time,
+                         start_time,
+                         final_phase_point)
+    init_state, init_loss_gradient, *grad_loss_by_vars = ode_result.phase_point
     return init_state, init_loss_gradient, list(grad_loss_by_vars)
 
   return backward
@@ -76,10 +92,13 @@ def _negate(x):
 
 def get_dtype_from_signature(signature):
   """
-  Args:
-    signature: Nest[tf.TensorSpec]
+  Parameters
+  ----------
+  signature : nest structure of tf.TensorSpec
 
-  Returns: tf.Dtype
+  Returns
+  -------
+  tf.Dtype
   """
   spec = signature[0]
   while not isinstance(spec, tf.TensorSpec):
@@ -102,14 +121,17 @@ def get_node_function(solver, fn, signature=None):
 
   ```
 
-  Args:
-    solver: ODESolver
-    fn: PhaseVectorField
-      The $f$ in the definition.
-    signature: Nest[tf.TensorSpec]
-      The signature of the phase point `x` in the definition.
+  Parameters
+  ----------
+  solver : ODESolver
+  fn : PhaseVectorField
+    The $f$ in the definition.
+  signature : nest structure of tf.TensorSpec
+    The signature of the phase point `x` in the definition, optional
 
-  Returns: PhaseVectorField
+  Returns
+  -------
+  PhaseVectorField
   """
   forward = solver(fn)
 
@@ -124,12 +146,15 @@ def get_node_function(solver, fn, signature=None):
   @tf.function(input_signature=input_signature)
   def node_fn(t0, t1, x0):
     """
-    Args:
-      t0: Time
-      t1: Time
-      x0: PhasePoint
+    Parameters
+    ----------
+    t0: Time
+    t1: Time
+    x0: PhasePoint
 
-    Returns: PhasePoint
+    Returns
+    -------
+    PhasePoint
     """
 
     @tf.custom_gradient
@@ -148,7 +173,8 @@ def get_node_function(solver, fn, signature=None):
       # nest back the flatten phase point to the original
       x = tf.nest.pack_sequence_as(x0, list(x))
 
-      y = forward(t0, t1, x)
+      ode_result = forward(t0, t1, x)
+      y = ode_result.phase_point
 
       # TF will catch all the variables watched by `tf.GradientTape`,
       # and pass them into the `grad_fn` via the `variables` kwarg.
@@ -175,17 +201,21 @@ def get_node_function(solver, fn, signature=None):
 
 
 def get_dynamical_node_function(
-    dynamical_solver, solver, fn, stop_condition, signature=None):
-  r"""
-  Args:
-    dynamical_solver: DynamicalODESolver
-    XXX
-    fn: PhaseVectorField
-      The $f$ in the definition.
-    signature: Nest[tf.TensorSpec]
-      The signature of the phase point `x` in the definition.
+    dynamical_solver, static_solver, fn, stop_condition, signature=None):
+  """Generalization of the `get_node_function` for dynamical solver.
 
-  Returns: PhaseVectorField
+  Parameters
+  ----------
+  dynamical_solver : DynamicalODESolver
+  static_solver : ODESolver
+  fn : PhaseVectorField
+    The $f$ in the definition.
+  signature : nest structure of tf.TensorSpec, optional
+    The signature of the phase point `x` in the definition.
+
+  Returns
+  -------
+  PhaseVectorField
   """
   forward = dynamical_solver(fn, stop_condition)
 
@@ -199,11 +229,14 @@ def get_dynamical_node_function(
   @tf.function(input_signature=input_signature)
   def node_fn(t0, x0):
     """
-    Args:
-      t0: Time
-      x0: PhasePoint
+    Parameters
+    ----------
+    t0 : Time
+    x0 : PhasePoint
 
-    Returns: PhasePoint
+    Returns
+    -------
+    PhasePoint
     """
 
     @tf.custom_gradient
@@ -222,7 +255,9 @@ def get_dynamical_node_function(
       # nest back the flatten phase point to the original
       x = tf.nest.pack_sequence_as(x0, list(x))
 
-      t1, y = forward(t0, x)
+      ode_result = forward(t0, x)
+      t1 = ode_result.time
+      y = ode_result.phase_point
 
       # TF will catch all the variables watched by `tf.GradientTape`,
       # and pass them into the `grad_fn` via the `variables` kwarg.
