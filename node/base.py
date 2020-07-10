@@ -7,13 +7,23 @@ class Time:
   """Type that represents float scalar."""
 
 
-class PhasePoint(metaclass=PhasePointMeta):
+class PhasePoint:
   """Type that represents `tf.Tensor` or nest structure of `tf.Tensor`."""
 
 
 class PhaseVectorField:
 
-  def __call__(self, t: Time, x: PhasePoint) -> PhasePoint:
+  def __call__(self, time, phase_point):
+    """
+    Parameters
+    ----------
+    time : Time
+    phase_point : PhasePoint
+
+    Returns
+    -------
+    PhasePoint
+    """
     return NotImplemented
 
 
@@ -22,7 +32,6 @@ class Diagnostics:
 
   ODE solver specific.
   """
-
 
 
 class Results:
