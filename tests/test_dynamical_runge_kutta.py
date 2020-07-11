@@ -22,8 +22,8 @@ def test_rk4_solver():
   x0 = tf.constant([1., 1.])
   forward = solver(f, stop_condition)
   t0 = tf.constant(0.)
-  t1, x1 = forward(t0, x0)
-  print(t1, x1)
+  x1 = forward(t0, x0)
+  print(x1)
 
   # the second example
 
@@ -39,8 +39,8 @@ def test_rk4_solver():
   x0 = tf.constant([1.])
   forward = solver(f, stop_condition)
   t0 = tf.constant(1.)
-  t1, x1 = forward(t0, x0, reverse=True)
-  print(t1, x1)
+  x1 = forward(t0, x0, reverse=True)
+  print(x1)
 
 
 def test_rkf56_solver():
@@ -62,9 +62,8 @@ def test_rkf56_solver():
   x0 = tf.constant([1., 1.])
   forward = solver(f, stop_condition)
   t0 = tf.constant(0.)
-  t1, x1 = forward(t0, x0)
-  print(t1, x1)
-  print(solver.diagnostics)
+  x1 = forward(t0, x0)
+  print(x1)
 
   # the second example
 
@@ -80,9 +79,8 @@ def test_rkf56_solver():
   x0 = tf.constant([1.])
   forward = solver(f, stop_condition)
   t0 = tf.constant(1.)
-  t1, x1 = forward(t0, x0, reverse=True)
-  print(t1, x1)
-  print(solver.diagnostics)
+  x1 = forward(t0, x0, reverse=True)
+  print(x1)
 
 
 print('\ntesting rk4 solver')

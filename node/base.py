@@ -27,14 +27,7 @@ class PhaseVectorField:
     return NotImplemented
 
 
-class Diagnostics:
-  """Diagnostics of the solving process of an ODE solver.
-
-  ODE solver specific.
-  """
-
-
-ODEResult = namedtuple('ODEResult', 'time, phase_point')
+ODEResult = namedtuple('ODEResult', 'time, phase_point, diagnostics')
 
 
 class ODESolver:

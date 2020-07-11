@@ -1,5 +1,6 @@
 import tensorflow as tf
-from node.base import Diagnostics, ODEResult, ODESolver
+from collections import namedtuple
+from node.base import ODEResult, ODESolver
 from node.utils.nest import nest_map
 
 
@@ -128,10 +129,7 @@ class RungeKuttaStep:
     return runge_kutta_step(t, x, dt)
 
 
-class RungeKuttaDiagnostics(Diagnostics):
-
-  def __init__(self):
-    self.num_steps = tf.Variable(0, trainable=False)
+RungeKuttaDiagnostics = namedtuple('RungeKuttaDiagnostics', 'num_steps')
 
 
 class RungeKuttaSolver(ODESolver):
@@ -142,10 +140,6 @@ class RungeKuttaSolver(ODESolver):
 
   $$ x(t + dt) = x(t) + \sum_{i = 0}^{N - 1} c_i k_i(t) $$
   ```
-
-  Attributes
-  ----------
-  diagnostics : RungeKuttaDiagnostics
 
   Parameters
   ----------
@@ -166,8 +160,6 @@ class RungeKuttaSolver(ODESolver):
     self.min_dt = tf.convert_to_tensor(min_dt, dtype=dtype)
     self._rk_step = RungeKuttaStep(a, b)
 
-    self.diagnostics = RungeKuttaDiagnostics()
-
   def __call__(self, fn):
 
     @nest_map
@@ -181,15 +173,18 @@ class RungeKuttaSolver(ODESolver):
       x = x0
       dt = s * self.dt
 
+      num_steps = 0
+
       while s * (t1 - t) > self.min_dt:
         if tf.abs(t1 - t) < tf.abs(dt):
           dt = t1 - t
         ks = self._rk_step(fn, t, x, dt)
         x = add(x, dx(*ks))
         t = t + dt
-        self.diagnostics.num_steps.assign_add(1)
+        num_steps += 1
 
-      return ODEResult(t1, x)
+      diagnostics = RungeKuttaDiagnostics(num_steps)
+      return ODEResult(t1, x, diagnostics)
 
     return forward
 
@@ -217,13 +212,9 @@ def norm(x):
   return tf.reduce_max([l_inf_norm(_) for _ in flat])
 
 
-class RungeKuttaFehlbergDiagnostics:
-
-  def __init__(self):
-    self.num_steps = tf.Variable(0, trainable=False)
-    self.num_accepted = tf.Variable(0, trainable=False)
-    self.succeed = tf.Variable(True, trainable=False)
-    self.total_error = tf.Variable(0., trainable=False)
+RungeKuttaFehlbergDiagnostics = namedtuple(
+  'RungeKuttaFehlbergDiagnostics',
+  'num_steps, num_accepted, succeed, total_error')
 
 
 class RungeKuttaFehlbergSolver(ODESolver):
@@ -241,10 +232,6 @@ class RungeKuttaFehlbergSolver(ODESolver):
   References
   ----------
   Numerical Analysis by Burden and Faires, section 5.5, algorithm 5.3, p297.
-
-  Attributes
-  ----------
-  diagnostics : RungeKuttaFehlbergDiagnostics
 
   Parameters
   ----------
@@ -274,8 +261,6 @@ class RungeKuttaFehlbergSolver(ODESolver):
       self.max_dt = tf.convert_to_tensor(max_dt, dtype=dtype)
     self._rk_step = RungeKuttaStep(a, b)
 
-    self.diagnostics = RungeKuttaFehlbergDiagnostics()
-
   def __call__(self, fn):
 
     @nest_map
@@ -297,19 +282,24 @@ class RungeKuttaFehlbergSolver(ODESolver):
       x = x0
       dt = s * self.init_dt
 
+      total_error = 0.
+      num_accepted = 0
+      succeed = 1
+      num_steps = 0
+
       while s * (t1 - t) > self.min_dt:
         if tf.abs(t1 - t) < tf.abs(dt):
           dt = t1 - t
 
         ks = self._rk_step(fn, t, x, dt)
         r = error(dt, *ks)
-        self.diagnostics.total_error.assign_add(r)
+        total_error += r
 
         # if r < self.tol:  # TODO
         if r < self.tol or tf.abs(dt) <= self.min_dt:
           x = add(x, dx(*ks))
           t = t + dt
-          self.diagnostics.num_accepted.assign_add(1)
+          num_accepted += 1
 
         delta = 0.84 * tf.pow(self.tol / r, 1 / 4)
         if delta < 0.1:
@@ -325,11 +315,13 @@ class RungeKuttaFehlbergSolver(ODESolver):
         # instead of raising an error.
         if tf.abs(dt) < self.min_dt:
           dt = s * self.min_dt
-          self.diagnostics.succeed.assign(False)
+          succeed = tf.constant(0)
 
-        self.diagnostics.num_steps.assign_add(1)
+        num_steps += 1
 
-      return ODEResult(t1, x)
+      diagnostics = RungeKuttaFehlbergDiagnostics(
+        num_steps, num_accepted, succeed, total_error)
+      return ODEResult(t1, x, diagnostics)
 
     return forward
 

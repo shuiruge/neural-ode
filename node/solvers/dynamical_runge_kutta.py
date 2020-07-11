@@ -38,8 +38,6 @@ class DynamicalRungeKuttaSolver(DynamicalODESolver):
     self.min_dt = tf.convert_to_tensor(min_dt, dtype=dtype)
     self._rk_step = RungeKuttaStep(a, b)
 
-    self.diagnostics = RungeKuttaDiagnostics()
-
   def __call__(self, fn, stop_condition):
 
     @nest_map
@@ -52,13 +50,16 @@ class DynamicalRungeKuttaSolver(DynamicalODESolver):
       x = x0
       dt = -self.dt if reverse else self.dt
 
+      num_steps = 0
+
       while not stop_condition(t0, x0, t, x):
         ks = self._rk_step(fn, t, x, dt)
         x = add(x, dx(*ks))
         t = t + dt
-        self.diagnostics.num_steps.assign_add(1)
+        num_steps += 1
 
-      return ODEResult(t, x)
+      diagnostics = RungeKuttaDiagnostics(num_steps)
+      return ODEResult(t, x, diagnostics)
 
     return forward
 
@@ -111,8 +112,6 @@ class DynamicalRungeKuttaFehlbergSolver(DynamicalODESolver):
       self.max_dt = tf.convert_to_tensor(max_dt, dtype=dtype)
     self._rk_step = RungeKuttaStep(a, b)
 
-    self.diagnostics = RungeKuttaFehlbergDiagnostics()
-
   def __call__(self, fn, stop_condition):
 
     @nest_map
@@ -135,16 +134,21 @@ class DynamicalRungeKuttaFehlbergSolver(DynamicalODESolver):
       dt = -self.init_dt if reverse else self.init_dt
       s = sign(dt)
 
+      total_error = 0.
+      num_accepted = 0
+      succeed = 1
+      num_steps = 0
+
       while not stop_condition(t0, x0, t, x):
         ks = self._rk_step(fn, t, x, dt)
         r = error(dt, *ks)
-        self.diagnostics.total_error.assign_add(r)
+        total_error += r
 
         # if r < self.tol:  # TODO
         if r < self.tol or tf.abs(dt) <= self.min_dt:
           x = add(x, dx(*ks))
           t = t + dt
-          self.diagnostics.num_accepted.assign_add(1)
+          num_accepted += 1
 
         delta = 0.84 * tf.pow(self.tol / r, 1 / 4)
         if delta < 0.1:
@@ -160,11 +164,13 @@ class DynamicalRungeKuttaFehlbergSolver(DynamicalODESolver):
         # instead of raising an error.
         if tf.abs(dt) < self.min_dt:
           dt = s * self.min_dt
-          self.diagnostics.succeed.assign(False)
+          succeed = 0
 
-        self.diagnostics.num_steps.assign_add(1)
+        num_steps += 1
 
-      return ODEResult(t, x)
+      diagnostics = RungeKuttaFehlbergDiagnostics(
+        num_steps, num_accepted, succeed, total_error)
+      return ODEResult(t, x, diagnostics)
 
     return forward
 
