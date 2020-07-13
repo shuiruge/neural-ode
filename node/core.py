@@ -272,7 +272,7 @@ def get_dynamical_node_function(
         # TODO: Re-write this part when the bug is fixed.
         variables = kwargs.get('variables', None)
 
-        backward = reverse_mode_derivative(solver, fn, variables)
+        backward = reverse_mode_derivative(static_solver, fn, variables)
         _, grad_by_x, grad_by_vars = backward(t0, t1, y, grad_ys)
         return [grad_by_x], grad_by_vars
 

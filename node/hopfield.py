@@ -9,7 +9,7 @@ References
 
 import tensorflow as tf
 
-from node.core import get_dynamical_node_function, get_node_function
+from node.core import get_dynamical_node_function
 from node.solvers.dynamical_runge_kutta import DynamicalRKF56Solver
 from node.solvers.runge_kutta import RKF56Solver
 
