@@ -172,7 +172,10 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
     units = input_shape[-1]
     f = tf.keras.layers.Dense(
       units, self.activation, kernel_constraint=kernel_constraint)
-    pvf = lambda t, x: (-x + f(x)) / self.tau
+
+    def pvf(t, x):
+      return (-x + f(x)) / self.tau
+
     stop_condition = StopCondition(pvf, self.max_time, self.relax_tol)
 
     self._f = f

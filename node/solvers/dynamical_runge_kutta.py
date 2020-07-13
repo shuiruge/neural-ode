@@ -2,8 +2,8 @@ import tensorflow as tf
 from node.base import DynamicalODESolver, ODEResult
 from node.utils.nest import nest_map
 from node.solvers.runge_kutta import (
-  add, norm, sign, RungeKuttaStep,  RungeKuttaDiagnostics, RungeKuttaSolver,
-  RungeKuttaFehlbergDiagnostics, RungeKuttaFehlbergSolver)
+  add, norm, sign, RungeKuttaStep, RungeKuttaDiagnostics,
+  RungeKuttaFehlbergDiagnostics)
 
 
 class DynamicalRungeKuttaSolver(DynamicalODESolver):
@@ -99,7 +99,8 @@ class DynamicalRungeKuttaFehlbergSolver(DynamicalODESolver):
   dtype : string or dtype, optional
   """
 
-  def __init__(self, a, b, c, e, init_dt, tol, min_dt, max_dt, dtype='float32'):
+  def __init__(self, a, b, c, e, init_dt, tol, min_dt, max_dt,
+               dtype='float32'):
     assert len(c) == len(e)
     self.c = c
     self.e = e

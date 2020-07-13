@@ -26,8 +26,10 @@ class Backward:
       initial_state : PhasePoint
       gradient_by_state : PhasePoint
       gradient_by_variables : list of tensor
-        In the paper, they're $z(t_0)$, $\partial L / \partial z^{\alpha}(t_0)$,
-        and $\partial L / \partial \theta_i^{\alpha}$, respectively.
+        - :math:`z(t_0)`,
+        - :math:`\partial L / \partial z^{\alpha}(t_0)`, and
+        - :math`\partial L / \partial \theta_i^{\alpha}`,
+        in the paper.
     """
     return NotImplemented
 
@@ -39,10 +41,10 @@ def reverse_mode_derivative(ode_solver, network, variables):
   ----------
   ode_solver : ODESolver
   network : PhaseVectorField
-    The $f(x, t)$ in the paper.
+    The :math`f(x, t)` in the paper.
   variables: list of tf.Variable
-    The $\theta$ in the paper. In practice, it's a list of variables.
-    Thus $\theta = (\theta_1, \ldots)$,
+    The :math`\theta` in the paper. In practice, it's a list of variables.
+    Thus :math`\theta = (\theta_1, \ldots)`,
 
   Returns
   -------
@@ -201,7 +203,7 @@ def get_node_function(solver, fn, signature=None):
 
 
 def get_dynamical_node_function(
-    dynamical_solver, static_solver, fn, stop_condition, signature=None):
+  dynamical_solver, static_solver, fn, stop_condition, signature=None):
   """Generalization of the `get_node_function` for dynamical solver.
 
   Parameters

@@ -190,7 +190,7 @@ class RungeKuttaSolver(ODESolver):
 
 
 def l2_norm(x):
-  """L_2 norm."""
+  """:math:`L_2` norm."""
   return tf.sqrt(tf.reduce_sum(tf.square(x)))
 
 
@@ -200,7 +200,7 @@ def rms_norm(x):
 
 
 def l_inf_norm(x):
-  """L_{\infinity} norm."""
+  """:math:`L_{\infinity}` norm."""
   return tf.reduce_max(tf.abs(x))
 
 
@@ -248,7 +248,8 @@ class RungeKuttaFehlbergSolver(ODESolver):
   dtype : string or dtype, optional
   """
 
-  def __init__(self, a, b, c, e, init_dt, tol, min_dt, max_dt, dtype='float32'):
+  def __init__(self, a, b, c, e, init_dt, tol, min_dt, max_dt,
+               dtype='float32'):
     assert len(c) == len(e)
     self.c = c
     self.e = e
