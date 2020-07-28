@@ -12,6 +12,51 @@ import tensorflow as tf
 from node.core import get_dynamical_node_function
 from node.solvers.dynamical_runge_kutta import DynamicalRKF56Solver
 from node.solvers.runge_kutta import RKF56Solver
+from node.utils.binary import binarize, inverse_binarize
+
+
+def _binarize(x, num_bits):
+  """
+  Parameters
+  ----------
+  x : tensor
+  num_bits : optional of int
+
+  Returns
+  -------
+  tensor
+    Shape: `x.shape[:-1] + [num_bits * x.shape[-1]]`, and values in {-1, +1}.
+    if `num_bits` is `None`, then returns `x` directly.
+  """
+  if num_bits is None:
+    return x
+  y = binarize(x, num_bits)
+  shape = y.get_shape().as_list()
+  shape = [-1 if n is None else n for n in shape]
+  flatten_shape = shape[:-2] + [shape[-2] * shape[-1]]
+  return tf.reshape(y, flatten_shape)
+
+
+def _inverse_binarize(x, num_bits):
+  """
+  Parameters
+  ----------
+  x : tensor
+  num_bits : optional of int
+
+  Returns
+  -------
+  tensor
+    Shape: `x.shape[:-1] + [x.shape[-1] // num_bits]`, and values in [-1, +1].
+    if `num_bits` is `None`, then returns `x` directly.
+  """
+  if num_bits is None:
+    return x
+  shape = x.get_shape().as_list()
+  shape = [-1 if n is None else n for n in shape]
+  nested_shape = shape[:-1] + [shape[-1] // num_bits, num_bits]
+  x = tf.reshape(x, nested_shape)
+  return inverse_binarize(x)
 
 
 @tf.function
@@ -53,20 +98,27 @@ class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
                activation='tanh',
                relax_tol=1e-2,
                reg_factor=0,
+               num_bits=None,
                **kwargs):
     super().__init__(**kwargs)
     self.activation = activation
     self.relax_tol = tf.convert_to_tensor(relax_tol)
     self.reg_factor = reg_factor
+    self.num_bits = num_bits
 
   def build(self, input_shape):
     units = input_shape[-1]
+    if self.num_bits is not None:
+      units *= self.num_bits
+
     self._f = tf.keras.layers.Dense(
       units, self.activation, kernel_constraint=kernel_constraint)
 
     super().build(input_shape)
 
   def call(self, x, training=None):
+    x = _binarize(x, self.num_bits)
+
     if training:
       y = self._f(x)
     else:
@@ -79,6 +131,7 @@ class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
     loss = tf.reduce_mean(tf.abs(y - x))
     self.add_loss(self.reg_factor * loss, inputs=True)
 
+    y = _inverse_binarize(y, self.num_bits)
     return y
 
 
@@ -158,6 +211,7 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
                max_time=1e+3,
                relax_tol=1e-3,
                reg_factor=0,
+               num_bits=None,
                **kwargs):
     super().__init__(**kwargs)
     self.activation = activation
@@ -167,9 +221,13 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
     self.max_time = max_time
     self.relax_tol = relax_tol
     self.reg_factor = reg_factor
+    self.num_bits = num_bits
 
   def build(self, input_shape):
     units = input_shape[-1]
+    if self.num_bits is not None:
+      units *= self.num_bits
+
     f = tf.keras.layers.Dense(
       units, self.activation, kernel_constraint=kernel_constraint)
 
@@ -187,6 +245,8 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
     super().build(input_shape)
 
   def call(self, x, training=None):
+    x = _binarize(x, self.num_bits)
+
     t0 = tf.constant(0.)
     if training:
       y = self._f(x)
@@ -196,4 +256,5 @@ class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
     loss = tf.reduce_mean(tf.abs(y - x))
     self.add_loss(self.reg_factor * loss)
 
+    y = _inverse_binarize(y, self.num_bits)
     return y

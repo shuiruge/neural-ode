@@ -21,6 +21,7 @@ IS_BENCHMARK = False
 USE_HEBB_RULE_INITIALIZER = False
 IS_CONTINUOUS_TIME = True
 DATA_QUANTIZE_METHOD = 'binary'
+NUM_BITS = 4
 # DATA_QUANTIZE_METHOD = 'four-piece'
 EPOCHS = 500
 
@@ -92,9 +93,9 @@ def show_denoising_effect(hopfield, X, flip_ratio):
 
 def create_hopfield_layer(units, is_continuous_time):
   if is_continuous_time:
-    hopfield = ContinuousTimeHopfieldLayer(reg_factor=1)
+    hopfield = ContinuousTimeHopfieldLayer(reg_factor=1, num_bits=NUM_BITS)
   else:
-    hopfield = DiscreteTimeHopfieldLayer(reg_factor=1)
+    hopfield = DiscreteTimeHopfieldLayer(reg_factor=1, num_bits=NUM_BITS)
   return hopfield
 
 
