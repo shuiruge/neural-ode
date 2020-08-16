@@ -170,16 +170,15 @@
   </proof>
 
   <\theorem>
-    Let <math|<around*|(|x,W,b|)>> a discrete-time Hopfield network. Then
-    <math|\<exists\>t<rsub|\<star\>>\<less\>+\<infty\>>, s.t.
-    <math|x<around*|(|t+1|)>=x<around*|(|t|)>>.
+    [Convergene of Discrete-time Hopfield Network] Let
+    <math|<around*|(|x,W,b|)>> a discrete-time Hopfield network. Then any
+    trajectory obeying the update rule will converge either to a fixed point
+    or a limit circle.
   </theorem>
 
   <\proof>
     Since the states of the network are finite, the
-    <math|<with|math-font|cal|E>> is lower bounded. Thus
-    <math|\<exists\>t<rsub|\<star\>>\<less\>+\<infty\>>, s.t.
-    <math|x<around*|(|t+1|)>=x<around*|(|t|)>>. <todo|limit circle?>
+    <math|<with|math-font|cal|E>> is lower bounded.
   </proof>
 
   <subsection|Continuous-time Hopfield Network>
@@ -270,11 +269,10 @@
   </remark>
 
   <\theorem>
-    Let <math|<around*|(|x,W,b;\<tau\>,f|)>> a continous-time Hopfield
-    network. Then for <math|\<forall\>\<epsilon\>\<gtr\>0>,
-    <math|\<exists\>t<rsub|\<star\>>\<less\>+\<infty\>>, s.t.
-    <math|<around*|\<\|\|\>|\<mathd\>x/\<mathd\>t|\<\|\|\>>\<less\>\<epsilon\>>.
-    <todo|limit circle, again?>
+    [Convergene of Continuous-time Hopfield Network] Let
+    <math|<around*|(|x,W,b;\<tau\>,f|)>> a continous-time Hopfield network.
+    Then any trajectory along the dynamics will converge either to a fixed
+    point or a limit circle.
   </theorem>
 
   <\proof>
@@ -363,6 +361,35 @@
     Indeed, trying to reach <math|y=x> within a small interval will force
     <math|x> to be a fixed point.
   </remark>
+
+  <section|Variations>
+
+  <subsection|Variation 1>
+
+  <\theorem>
+    Let <math|v\<in\>\<bbb-R\><rsup|d>>, <math|F\<in\>C<rsup|1><around*|(|\<bbb-R\><rsup|n>,\<bbb-R\>|)>>,
+    <math|W\<in\>\<bbb-R\><rsup|n>\<times\>\<bbb-R\><rsup|d>>,
+    <math|b\<in\>\<bbb-R\><rsup|n>>, and <math|\<tau\>\<gtr\>0>. Define the
+    dynamics
+
+    <\equation*>
+      \<tau\><frac|\<mathd\>x|\<mathd\>t>=-\<nabla\>E<around*|(|x|)>=-x+W<rsup|T>\<cdot\>\<nabla\>F<around*|(|W\<cdot\>x+b|)>.
+    </equation*>
+
+    If <math|\<nabla\>F<around*|(|.|)>> is bounded, i.e.
+    <math|\<exists\>K\<gtr\>0> s.t. <math|max<rsub|x\<in\>\<bbb-R\><rsup|n>><around*|{|\<nabla\>F<around*|(|x|)>|}>\<less\>K>,
+    then any trajectory along the dynamics will converge either to a fixed
+    point or a limit circle.
+  </theorem>
+
+  <\proof>
+    Let <math|E<around*|(|x|)>\<assign\>-<frac|1|2>x<rsub|\<alpha\>>x<rsup|\<alpha\>>-v<rsub|\<alpha\>>x<rsup|\<alpha\>>+F<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+    x<rsup|\<beta\>>+b<rsup|\<alpha\>>|)>>, then
+    <math|\<tau\>\<mathd\>x/\<mathd\>t=-\<nabla\>E<around*|(|x|)>>. The
+    <math|-x> term will dominate the <math|W<rsup|T>\<cdot\>\<nabla\>F<around*|(|W\<cdot\>x+b|)>>
+    term for <math|<around*|\<\|\|\>|x|\<\|\|\>>\<gtr\>K<around*|\<\|\|\>|W|\<\|\|\>>>,
+    thus converges. So <math|E> is a Lyapunov function of the dynamics.
+  </proof>
 </body>
 
 <initial|<\collection>
@@ -376,12 +403,12 @@
     <associate|auto-3|<tuple|2|2>>
     <associate|auto-4|<tuple|2.1|2>>
     <associate|auto-5|<tuple|2.2|3>>
+    <associate|auto-6|<tuple|3|?>>
+    <associate|auto-7|<tuple|3.1|?>>
     <associate|footnote-1|<tuple|1|?>>
     <associate|footnote-2|<tuple|2|?>>
-    <associate|footnote-3|<tuple|3|?>>
     <associate|footnr-1|<tuple|1|?>>
     <associate|footnr-2|<tuple|2|?>>
-    <associate|footnr-3|<tuple|3|?>>
   </collection>
 </references>
 
