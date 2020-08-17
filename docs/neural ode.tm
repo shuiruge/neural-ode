@@ -373,7 +373,7 @@
     dynamics
 
     <\equation*>
-      \<tau\><frac|\<mathd\>x|\<mathd\>t>=-\<nabla\>E<around*|(|x|)>=-x+W<rsup|T>\<cdot\>\<nabla\>F<around*|(|W\<cdot\>x+b|)>.
+      \<tau\><frac|\<mathd\>x|\<mathd\>t>=-\<nabla\>E<around*|(|x|)>=-x+W<rsup|T>\<cdot\>\<nabla\>F<around*|(|W\<cdot\>x+b|)>+v.
     </equation*>
 
     If <math|\<nabla\>F<around*|(|.|)>> is bounded, i.e.
@@ -383,13 +383,46 @@
   </theorem>
 
   <\proof>
-    Let <math|E<around*|(|x|)>\<assign\>-<frac|1|2>x<rsub|\<alpha\>>x<rsup|\<alpha\>>-v<rsub|\<alpha\>>x<rsup|\<alpha\>>+F<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+    Let <math|E<around*|(|x|)>\<assign\><frac|1|2>x<rsub|\<alpha\>>x<rsup|\<alpha\>>-v<rsub|\<alpha\>>x<rsup|\<alpha\>>-F<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
     x<rsup|\<beta\>>+b<rsup|\<alpha\>>|)>>, then
     <math|\<tau\>\<mathd\>x/\<mathd\>t=-\<nabla\>E<around*|(|x|)>>. The
     <math|-x> term will dominate the <math|W<rsup|T>\<cdot\>\<nabla\>F<around*|(|W\<cdot\>x+b|)>>
     term for <math|<around*|\<\|\|\>|x|\<\|\|\>>\<gtr\>K<around*|\<\|\|\>|W|\<\|\|\>>>,
     thus converges. So <math|E> is a Lyapunov function of the dynamics.
   </proof>
+
+  <\example>
+    Let <math|F<around*|(|x|)>\<assign\><big|sum><rsub|\<alpha\>><big|int><rsup|x<rsup|\<alpha\>>>\<sigma\><around*|(|s|)>\<mathd\>s>,
+    where <math|\<sigma\>> is sigmoid function. Then
+
+    <\equation*>
+      \<tau\><frac|\<mathd\>x|\<mathd\>t>=-x+W<rsup|T>\<cdot\>\<sigma\><around*|(|W\<cdot\>x+b|)>+v.
+    </equation*>
+
+    This coincides with the form in ref <reference|On autoencoder scoring>.
+  </example>
+
+  <\example>
+    Let <math|F<around*|(|x|)>\<assign\>\<beta\><rsup|-1>ln<around*|(|\<beta\><big|sum><rsub|\<alpha\>>\<mathe\><rsup|x<rsup|\<alpha\>>>|)>>,
+    <math|b=0>, and <math|v=0>, then
+
+    <\equation*>
+      \<tau\><frac|\<mathd\>x|\<mathd\>t>=-x+W<rsup|T>\<cdot\>softmax<around*|(|\<beta\>W\<cdot\>x|)>.
+    </equation*>
+
+    This coincides with the form in ref <reference|Hopfield networks is All
+    You Need>.
+  </example>
+
+  <section|References>
+
+  <\enumerate-numeric>
+    <item><label|On autoencoder scoring> <hlink|On autoencoder
+    scoring|http://proceedings.mlr.press/v28/kamyshanska13.pdf>.
+
+    <item><label|Hopfield networks is All You Need> <hlink|Hopfield networks
+    is All You Need|https://arxiv.org/abs/2008.02217>.
+  </enumerate-numeric>
 </body>
 
 <initial|<\collection>
@@ -397,6 +430,8 @@
 
 <\references>
   <\collection>
+    <associate|Hopfield networks is All You Need|<tuple|2|?>>
+    <associate|On autoencoder scoring|<tuple|1|?>>
     <associate|adjoint method|<tuple|1|1>>
     <associate|auto-1|<tuple|1|1>>
     <associate|auto-2|<tuple|1.1|2>>
@@ -405,6 +440,7 @@
     <associate|auto-5|<tuple|2.2|3>>
     <associate|auto-6|<tuple|3|?>>
     <associate|auto-7|<tuple|3.1|?>>
+    <associate|auto-8|<tuple|4|?>>
     <associate|footnote-1|<tuple|1|?>>
     <associate|footnote-2|<tuple|2|?>>
     <associate|footnr-1|<tuple|1|?>>
@@ -434,6 +470,14 @@
       <with|par-left|<quote|1tab>|2.2<space|2spc>Continuous-time Hopfield
       Network <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-5>>
+
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|3<space|2spc>Variations>
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-6><vspace|0.5fn>
+
+      <with|par-left|<quote|1tab>|3.1<space|2spc>Variation 1
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-7>>
     </associate>
   </collection>
 </auxiliary>
