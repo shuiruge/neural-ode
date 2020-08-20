@@ -1,9 +1,11 @@
 import tensorflow as tf
+from functools import wraps
 
 
 def nest_map(fn):  # TODO: add example.
   r"""Decorator converting `fn` to a nest map."""
 
+  @wraps(fn)
   def nest_fn(*args, **kwargs):
     """All args shall share the same nesting structure."""
 
