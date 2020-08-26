@@ -414,6 +414,53 @@
     You Need>.
   </example>
 
+  <\example>
+    <label|example: softmax>Let <math|v<rsub|i>\<assign\>W<rsub|i,\<cdummy\>>>,
+    i.e. the <math|i>th row of the matrix <math|W>. Assume
+    <math|<around*|\<\|\|\>|v<rsub|i>|\<\|\|\>>=1> for
+    <math|\<forall\>i=1,\<ldots\>,n>. Let
+    <math|F<around*|(|x|)>\<assign\>\<beta\><rsup|-1>ln<around*|(|\<beta\><big|sum><rsub|\<alpha\>>\<mathe\><rsup|x<rsup|\<alpha\>>>|)>>,
+    and <math|v=0>, then
+
+    <\equation*>
+      \<tau\><frac|\<mathd\>x<rsup|\<alpha\>>|\<mathd\>t>=-x<rsup|\<alpha\>>+<big|sum><rsub|i>p<rsub|i>v<rsup|\<alpha\>><rsub|i>,
+    </equation*>
+
+    where <math|z<rsub|i>\<assign\>v<rsub|i>\<cdot\>x+b<rsub|i>> and then
+    <math|p<rsup|i>\<assign\>exp<around*|(|\<beta\>z<rsup|i>|)>/<big|sum><rsub|j>exp<around*|(|\<beta\>z<rsup|j>|)>>.
+    The <math|<around*|{|<around*|(|p<rsub|i>,v<rsub|i>|)>\|i=1,\<ldots\>,n|}>>
+    forms a categorical distribution.
+  </example>
+
+  <\lemma>
+    Assume example <reference|example: softmax>. The Jacobian of the dynamics
+    is
+
+    <\equation*>
+      J<rsup|\<alpha\>\<beta\>><around*|(|x|)>=-\<delta\><rsup|\<alpha\>\<beta\>>+Cov<rsub|p<around*|(|x|)>><around*|(|v<rsup|\<alpha\>>,v<rsup|\<beta\>>|)>,
+    </equation*>
+
+    where <math|Cov<rsub|p><around*|(|\<cdummy\>,\<cdummy\>|)>> denotes the
+    covariance given distribution <math|p>.
+  </lemma>
+
+  <\proof>
+    Directly,
+
+    <\align>
+      <tformat|<table|<row|<cell|J<rsup|\<alpha\>\<beta\>>>|<cell|\<equiv\><frac|\<partial\>|\<partial\>x<rsub|\<beta\>>><around*|(|-x<rsup|\<alpha\>>+<big|sum><rsub|i>v<rsup|\<alpha\>><rsub|i>p<rsub|i>|)>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>\<beta\>>+<big|sum><rsub|i,j>v<rsup|\<alpha\>><rsub|i><frac|\<partial\>p<rsub|i>|\<partial\>z<rsup|j>><frac|\<partial\>z<rsup|j>|\<partial\>x<rsub|\<beta\>>>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>\<beta\>>+<big|sum><rsub|i,j>v<rsup|\<alpha\>><rsub|i>v<rsub|j><rsup|\<beta\>><around*|(|p<rsub|i>\<delta\><rsub|i,j>-p<rsub|i>p<rsub|j>|)>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>\<beta\>>+<big|sum><rsub|i>p<rsub|i>v<rsub|i><rsup|\<alpha\>>v<rsub|i><rsup|\<beta\>>-<around*|(|<big|sum><rsub|i>p<rsub|i>v<rsub|i><rsup|\<alpha\>>|)><around*|(|<big|sum><rsub|j>p<rsub|j>v<rsub|j><rsup|\<beta\>>|)>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>\<beta\>>+\<bbb-E\><around*|(|v<rsup|\<alpha\>>v<rsup|\<beta\>>|)>-\<bbb-E\><around*|(|v<rsup|\<alpha\>>|)>\<bbb-E\><around*|(|v<rsup|\<beta\>>|)>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>\<beta\>>+Cov<rsub|p><around*|(|v<rsup|\<alpha\>>,v<rsup|\<beta\>>|)>.>>>>
+    </align>
+
+    And notice that the only variable that depends on <math|x> is <math|p>.
+    So we insert <math|x> and gain the result.
+  </proof>
+
+  For instance, at fixed point <math|x=v<rsub|1>>,
+  <math|p=<around*|(|1,0,\<ldots\>,0|)>>.
+  <math|Cov<rsub|p<around*|(|v<rsub|1>|)>><around*|(|v<rsup|\<alpha\>>,v<rsup|\<beta\>>|)>=v<rsub|1><rsup|\<alpha\>>v<rsub|1><rsup|\<beta\>>-v<rsub|1><rsup|\<alpha\>>v<rsub|1><rsup|\<beta\>>=0>.
+  So <math|J<rsup|\<alpha\>\<beta\>>=-\<delta\><rsup|\<alpha\>\<beta\>>> is
+  negative defined, indicating that the fixed point is stable.
+
   <section|References>
 
   <\enumerate-numeric>
@@ -434,6 +481,8 @@
     <associate|On autoencoder scoring|<tuple|1|?>>
     <associate|adjoint method|<tuple|1|1>>
     <associate|auto-1|<tuple|1|1>>
+    <associate|auto-10|<tuple|4|?>>
+    <associate|auto-11|<tuple|4|?>>
     <associate|auto-2|<tuple|1.1|2>>
     <associate|auto-3|<tuple|2|2>>
     <associate|auto-4|<tuple|2.1|2>>
@@ -441,6 +490,8 @@
     <associate|auto-6|<tuple|3|?>>
     <associate|auto-7|<tuple|3.1|?>>
     <associate|auto-8|<tuple|4|?>>
+    <associate|auto-9|<tuple|4|?>>
+    <associate|example: softmax|<tuple|15|?>>
     <associate|footnote-1|<tuple|1|?>>
     <associate|footnote-2|<tuple|2|?>>
     <associate|footnr-1|<tuple|1|?>>
@@ -478,6 +529,10 @@
       <with|par-left|<quote|1tab>|3.1<space|2spc>Variation 1
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-7>>
+
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|4<space|2spc>References>
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-8><vspace|0.5fn>
     </associate>
   </collection>
 </auxiliary>
