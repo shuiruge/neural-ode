@@ -105,6 +105,8 @@
 
   <subsection|Discrete-time Hopfield Network>
 
+  <subsubsection|Definition>
+
   <\definition>
     [Discrete-time Hopfield Network]
 
@@ -122,6 +124,8 @@
     The <math|<around*|(|x,W,b|)>> is called a discrete-time Hopfield
     network.
   </definition>
+
+  <subsubsection|Convergence>
 
   <\lemma>
     Let <math|<around*|(|x,W,b|)>> a discrete-time Hopfield network. Define
@@ -183,6 +187,8 @@
 
   <subsection|Continuous-time Hopfield Network>
 
+  <subsubsection|Definition>
+
   <\definition>
     [Continuous-time Hopfield Network]
 
@@ -221,6 +227,8 @@
 
     which is the same as the discrete-time Hopfield network.
   </remark>
+
+  <subsubsection|Convergence>
 
   <\lemma>
     Let <math|<around*|(|x,W,b;\<tau\>,f|)>> a continous-time Hopfield
@@ -281,6 +289,8 @@
     <math|f:\<bbb-R\>\<rightarrow\><around*|[|-1,1|]>>, is bounded. This
     <math|E> is a Lyapunov function for the continous-time Hopfield network.
   </proof>
+
+  <subsubsection|Learning Rule>
 
   <\corollary>
     Let <math|<around*|(|x,W,b;\<tau\>,f|)>> a continous-time Hopfield
@@ -361,6 +371,46 @@
     Indeed, trying to reach <math|y=x> within a small interval will force
     <math|x> to be a fixed point.
   </remark>
+
+  <subsubsection|Relation to Auto-encoder>
+
+  Notice that at fixed point <math|x<rsub|\<star\>>>,
+  <math|x<rsub|\<star\>><rsup|\<alpha\>>=f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+  x<rsub|\<star\>><rsup|\<beta\>>+b<rsup|\<alpha\>>|)>>, which is a simple
+  auto-encoder.
+
+  <subsubsection|Fixed Points>
+
+  We study the stability of fixed points. Let
+  <math|z<rsup|\<alpha\>>\<assign\>W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+  x<rsup|\<beta\>>+b<rsup|\<alpha\>>>. Jacobian
+
+  <\align>
+    <tformat|<table|<row|<cell|J<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+    >|<cell|=<frac|\<partial\>|\<partial\>x<rsup|\<beta\>>><around*|(|-x<rsup|\<alpha\>>+f<around*|(|z<rsup|\<alpha\>>|)>|)>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>+f<rprime|'><around*|(|z<rsup|\<alpha\>>|)>W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>.>>>>
+  </align>
+
+  If <math|f<around*|(|x|)>=tanh<around*|(|x|)>>, and at fixed point,
+
+  <\align>
+    <tformat|<table|<row|<cell|J<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
+    >|<cell|=-\<delta\><rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>+<frac|1|2><around*|(|1-f<rsup|2><around*|(|z<rsup|\<alpha\>>|)>|)>W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>+<frac|1|2><around*|(|1-x<rsub|\<star\>><rsup|\<alpha\>>|)><around*|(|1+x<rsub|\<star\>><rsup|\<alpha\>>|)>W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>.>>>>
+  </align>
+
+  The eigen-value of <math|J>, <math|\<lambda\><rsub|J>=:-1+\<lambda\>>, have
+
+  <\equation*>
+    det<around*|(|<frac|1|2><around*|(|1-x<rsub|\<star\>><rsup|\<alpha\>>|)><around*|(|1+x<rsub|\<star\>><rsup|\<alpha\>>|)>W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>-\<lambda\>\<delta\><rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>|)>=0
+  </equation*>
+
+  Because of the linearity of this equation, and
+  <math|<around*|\||x<rsub|\<star\>><rsup|\<alpha\>>|\|>\<less\>1> being
+  bounded for <math|\<forall\>\<alpha\>>, we can expect that
+  <math|\<lambda\>\<sim\>\<lambda\><rsub|W>>, where <math|\<lambda\><rsub|W>>
+  is the eigen-value of <math|W>. If <math|<around*|\||\<lambda\><rsub|W>|\|>\<ll\>1>,
+  then <math|<around*|\||\<lambda\>|\|>\<ll\>1>, and then
+  <math|\<lambda\><rsub|J>\<approx\>-1>, indicating that the fixed points are
+  stable.
 
   <section|Variations>
 
@@ -448,7 +498,7 @@
     Directly,
 
     <\align>
-      <tformat|<table|<row|<cell|J<rsup|\<alpha\>\<beta\>>>|<cell|\<equiv\><frac|\<partial\>|\<partial\>x<rsub|\<beta\>>><around*|(|-x<rsup|\<alpha\>>+<big|sum><rsub|i>v<rsup|\<alpha\>><rsub|i>p<rsub|i>|)>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>\<beta\>>+<big|sum><rsub|i,j>v<rsup|\<alpha\>><rsub|i><frac|\<partial\>p<rsub|i>|\<partial\>z<rsup|j>><frac|\<partial\>z<rsup|j>|\<partial\>x<rsub|\<beta\>>>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>\<beta\>>+<big|sum><rsub|i,j>v<rsup|\<alpha\>><rsub|i>v<rsub|j><rsup|\<beta\>><around*|(|p<rsub|i>\<delta\><rsub|i,j>-p<rsub|i>p<rsub|j>|)>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>\<beta\>>+<big|sum><rsub|i>p<rsub|i>v<rsub|i><rsup|\<alpha\>>v<rsub|i><rsup|\<beta\>>-<around*|(|<big|sum><rsub|i>p<rsub|i>v<rsub|i><rsup|\<alpha\>>|)><around*|(|<big|sum><rsub|j>p<rsub|j>v<rsub|j><rsup|\<beta\>>|)>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>\<beta\>>+\<bbb-E\><around*|(|v<rsup|\<alpha\>>v<rsup|\<beta\>>|)>-\<bbb-E\><around*|(|v<rsup|\<alpha\>>|)>\<bbb-E\><around*|(|v<rsup|\<beta\>>|)>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>\<beta\>>+Cov<rsub|p><around*|(|v<rsup|\<alpha\>>,v<rsup|\<beta\>>|)>.>>>>
+      <tformat|<table|<row|<cell|J<rsup|\<alpha\>\<beta\>>>|<cell|\<equiv\><frac|\<partial\>|\<partial\>x<rsub|\<beta\>>><around*|(|-x<rsup|\<alpha\>>+<big|sum><rsub|i>v<rsup|\<alpha\>><rsub|i>p<rsub|i>|)>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>\<beta\>>+<big|sum><rsub|i,j>v<rsup|\<alpha\>><rsub|i><frac|\<partial\>p<rsub|i>|\<partial\>z<rsup|j>><frac|\<partial\>z<rsup|j>|\<partial\>x<rsub|\<beta\>>>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>\<beta\>>+\<beta\><big|sum><rsub|i,j>v<rsup|\<alpha\>><rsub|i>v<rsub|j><rsup|\<beta\>><around*|(|p<rsub|i>\<delta\><rsub|i,j>-p<rsub|i>p<rsub|j>|)>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>\<beta\>>+\<beta\><big|sum><rsub|i>p<rsub|i>v<rsub|i><rsup|\<alpha\>>v<rsub|i><rsup|\<beta\>>-\<beta\><around*|(|<big|sum><rsub|i>p<rsub|i>v<rsub|i><rsup|\<alpha\>>|)><around*|(|<big|sum><rsub|j>p<rsub|j>v<rsub|j><rsup|\<beta\>>|)>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>\<beta\>>+\<beta\>\<bbb-E\><around*|(|v<rsup|\<alpha\>>v<rsup|\<beta\>>|)>-\<beta\>\<bbb-E\><around*|(|v<rsup|\<alpha\>>|)>\<bbb-E\><around*|(|v<rsup|\<beta\>>|)>>>|<row|<cell|>|<cell|=-\<delta\><rsup|\<alpha\>\<beta\>>+\<beta\>Cov<rsub|p><around*|(|v<rsup|\<alpha\>>,v<rsup|\<beta\>>|)>.>>>>
     </align>
 
     And notice that the only variable that depends on <math|x> is <math|p>.
@@ -481,16 +531,20 @@
     <associate|On autoencoder scoring|<tuple|1|?>>
     <associate|adjoint method|<tuple|1|1>>
     <associate|auto-1|<tuple|1|1>>
-    <associate|auto-10|<tuple|4|?>>
-    <associate|auto-11|<tuple|4|?>>
+    <associate|auto-10|<tuple|2.2.3|?>>
+    <associate|auto-11|<tuple|2.2.4|?>>
+    <associate|auto-12|<tuple|2.2.5|?>>
+    <associate|auto-13|<tuple|3|?>>
+    <associate|auto-14|<tuple|3.1|?>>
+    <associate|auto-15|<tuple|4|?>>
     <associate|auto-2|<tuple|1.1|2>>
     <associate|auto-3|<tuple|2|2>>
     <associate|auto-4|<tuple|2.1|2>>
-    <associate|auto-5|<tuple|2.2|3>>
-    <associate|auto-6|<tuple|3|?>>
-    <associate|auto-7|<tuple|3.1|?>>
-    <associate|auto-8|<tuple|4|?>>
-    <associate|auto-9|<tuple|4|?>>
+    <associate|auto-5|<tuple|2.1.1|3>>
+    <associate|auto-6|<tuple|2.1.2|?>>
+    <associate|auto-7|<tuple|2.2|?>>
+    <associate|auto-8|<tuple|2.2.1|?>>
+    <associate|auto-9|<tuple|2.2.2|?>>
     <associate|example: softmax|<tuple|15|?>>
     <associate|footnote-1|<tuple|1|?>>
     <associate|footnote-2|<tuple|2|?>>
