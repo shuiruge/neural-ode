@@ -376,10 +376,11 @@
 
   Notice that at fixed point <math|x<rsub|\<star\>>>,
   <math|x<rsub|\<star\>><rsup|\<alpha\>>=f<around*|(|W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
-  x<rsub|\<star\>><rsup|\<beta\>>+b<rsup|\<alpha\>>|)>>, which is a simple
-  auto-encoder.
+  x<rsub|\<star\>><rsup|\<beta\>>+b<rsup|\<alpha\>>|)>>, which is a
+  single-layer auto-encoder. The learning rule is also simply the learning
+  rule of single-layer auto-encoder.
 
-  <subsubsection|Fixed Points>
+  <subsubsection|Stability of Fixed Points>
 
   We study the stability of fixed points. Let
   <math|z<rsup|\<alpha\>>\<assign\>W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>
@@ -403,14 +404,13 @@
     det<around*|(|<frac|1|2><around*|(|1-x<rsub|\<star\>><rsup|\<alpha\>>|)><around*|(|1+x<rsub|\<star\>><rsup|\<alpha\>>|)>W<rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>-\<lambda\>\<delta\><rsup|\<alpha\>><rsub|<space|2.4spc>\<beta\>>|)>=0
   </equation*>
 
-  Because of the linearity of this equation, and
-  <math|<around*|\||x<rsub|\<star\>><rsup|\<alpha\>>|\|>\<less\>1> being
-  bounded for <math|\<forall\>\<alpha\>>, we can expect that
-  <math|\<lambda\>\<sim\>\<lambda\><rsub|W>>, where <math|\<lambda\><rsub|W>>
-  is the eigen-value of <math|W>. If <math|<around*|\||\<lambda\><rsub|W>|\|>\<ll\>1>,
-  then <math|<around*|\||\<lambda\>|\|>\<ll\>1>, and then
-  <math|\<lambda\><rsub|J>\<approx\>-1>, indicating that the fixed points are
-  stable.
+  For instance, if <math|x<rsub|\<star\>><rsup|\<alpha\>>\<rightarrow\>\<pm\>1>
+  for <math|\<forall\>\<alpha\>>, that is
+  <math|<around*|\<\|\|\>|x<rsub|\<star\>><rsup|2>-1|\<\|\|\>>\<ll\>1>, then,
+  because of the linearity of this equation, we will have
+  <math|\<lambda\>\<ll\>1>. In this case,
+  <math|\<lambda\><rsub|J>\<approx\>-1\<less\>0>, indicating the stability of
+  the fixed point <math|x<rsub|\<star\>>>.
 
   <section|Variations>
 
@@ -572,21 +572,49 @@
       Network <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-4>>
 
+      <with|par-left|<quote|2tab>|2.1.1<space|2spc>Definition
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-5>>
+
+      <with|par-left|<quote|2tab>|2.1.2<space|2spc>Convergence
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-6>>
+
       <with|par-left|<quote|1tab>|2.2<space|2spc>Continuous-time Hopfield
       Network <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-5>>
+      <no-break><pageref|auto-7>>
+
+      <with|par-left|<quote|2tab>|2.2.1<space|2spc>Definition
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-8>>
+
+      <with|par-left|<quote|2tab>|2.2.2<space|2spc>Convergence
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-9>>
+
+      <with|par-left|<quote|2tab>|2.2.3<space|2spc>Learning Rule
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-10>>
+
+      <with|par-left|<quote|2tab>|2.2.4<space|2spc>Relation to Auto-encoder
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-11>>
+
+      <with|par-left|<quote|2tab>|2.2.5<space|2spc>Fixed Points
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-12>>
 
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|3<space|2spc>Variations>
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-6><vspace|0.5fn>
+      <no-break><pageref|auto-13><vspace|0.5fn>
 
       <with|par-left|<quote|1tab>|3.1<space|2spc>Variation 1
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-7>>
+      <no-break><pageref|auto-14>>
 
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|4<space|2spc>References>
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-8><vspace|0.5fn>
+      <no-break><pageref|auto-15><vspace|0.5fn>
     </associate>
   </collection>
 </auxiliary>
