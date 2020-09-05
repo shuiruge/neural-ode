@@ -1,6 +1,7 @@
 """Core algorithm implementations and utils."""
 
 import tensorflow as tf
+
 from node.utils.nest import nest_map
 
 
@@ -283,3 +284,39 @@ def get_dynamical_node_function(
     return custom_gradient_fn(*tf.nest.flatten(x0))
 
   return node_fn
+
+
+class StopCondition:
+  """Stopping condition for dynamical ODE solver.
+
+  Attributes
+  ----------
+  relax_time : scalar
+    The time when relax. Being `-1` means that `self.max_time` is reached
+    before relaxing.
+
+  Parameters
+  ----------
+  pvf : phase_vector_field
+  max_time : float
+    Returns `True` when `t1 - t0 > max_time`.
+  relax_tol : float
+    Relative tolerance for relaxition.
+  """
+
+  def __init__(self, pvf, max_time, relax_tol):
+    self.pvf = pvf
+    self.max_time = tf.convert_to_tensor(max_time)
+    self.relax_tol = tf.convert_to_tensor(relax_tol)
+
+    self.relax_time = tf.Variable(0., trainable=False)
+
+  @tf.function
+  def __call__(self, t0, x0, t1, x1):
+    if t1 - t0 > self.max_time:
+      self.relax_time.assign(-1)
+      return True
+    if tf.reduce_max(tf.abs(self.pvf(t1, x1))) < self.relax_tol:
+      self.relax_time.assign(t1)
+      return True
+    return False

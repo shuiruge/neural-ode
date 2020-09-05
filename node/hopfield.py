@@ -9,7 +9,7 @@ References
 
 import tensorflow as tf
 
-from node.core import get_dynamical_node_function
+from node.core import StopCondition, get_dynamical_node_function
 from node.solvers.dynamical_runge_kutta import DynamicalRKF56Solver
 from node.solvers.runge_kutta import RKF56Solver
 from node.utils.binary import binarize, inverse_binarize
@@ -133,42 +133,6 @@ class DiscreteTimeHopfieldLayer(tf.keras.layers.Layer):
 
     y = _inverse_binarize(y, self.num_bits)
     return y
-
-
-class StopCondition:
-  """Stopping condition for dynamical ODE solver.
-
-  Attributes
-  ----------
-  relax_time : scalar
-    The time when relax. Being `-1` means that `self.max_time` is reached
-    before relaxing.
-
-  Parameters
-  ----------
-  pvf : phase_vector_field
-  max_time : float
-    Returns `True` when `t1 - t0 > max_time`.
-  relax_tol : float
-    Relative tolerance for relaxition.
-  """
-
-  def __init__(self, pvf, max_time, relax_tol):
-    self.pvf = pvf
-    self.max_time = tf.convert_to_tensor(max_time)
-    self.relax_tol = tf.convert_to_tensor(relax_tol)
-
-    self.relax_time = tf.Variable(0., trainable=False)
-
-  @tf.function
-  def __call__(self, t0, x0, t1, x1):
-    if t1 - t0 > self.max_time:
-      self.relax_time.assign(-1)
-      return True
-    if tf.reduce_max(tf.abs(self.pvf(t1, x1))) < self.relax_tol:
-      self.relax_time.assign(t1)
-      return True
-    return False
 
 
 class ContinuousTimeHopfieldLayer(tf.keras.layers.Layer):
