@@ -1,6 +1,6 @@
 # node
 
-Neural ODE.
+A TensorFlow (V2) implementation of [nerual ordinary differential equations](https://arxiv.org/abs/1806.07366).
 
 ## TODO
 
